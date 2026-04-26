@@ -19,8 +19,15 @@ Make sure the backend is running on `http://127.0.0.1:8765` (`launcher.bat` or `
 | `smoke_skip.py`   | Re‑downloading a target produces skip lines via the existing archive |
 | `smoke_final.py`  | Friendly `user_start` log line shows up |
 | `smoke_fixes.py`  | Exit button + save banner + indeterminate bar sweeps full width + `/api/system/shutdown` actually kills the backend |
+| `smoke_locale_shots.py` | Generates the README screenshots for both `zh` and `en` locales (uses dummy users / cookies / config to avoid leaking real data) |
 
 Outputs go to `_smoke/shots/` (gitignored). Inspect them visually after each run.
+
+## Maintenance utilities
+
+| Script | What it does |
+|---|---|
+| `rebuild_archive.py` | Rebuilds `server/data/archive.sqlite` from the actual files in `downloads/`. Use when you've manually deleted some downloaded files and want gallery-dl to re-fetch them on the next run (otherwise the archive still says "downloaded" and they'll be skipped forever). Backs up the old archive with a timestamp. Safe to run while the server is up. |
 
 ## Running
 
