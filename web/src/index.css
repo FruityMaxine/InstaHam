@@ -1,0 +1,52 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource-variable/jetbrains-mono';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  @apply bg-zinc-950 text-zinc-200 font-sans antialiased;
+  background-image: radial-gradient(circle at 1px 1px, rgba(63,63,70,0.35) 1px, transparent 0);
+  background-size: 22px 22px;
+  background-attachment: fixed;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #27272a; border-radius: 9999px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #3f3f46; background-clip: content-box; border: 2px solid transparent; }
+::selection { background-color: rgba(52,211,153,0.35); color: white; }
+
+@layer components {
+  .panel { @apply rounded-lg border border-zinc-800 bg-zinc-900/60 backdrop-blur-sm; }
+  .panel-h { @apply flex items-center justify-between px-4 py-2.5 border-b border-zinc-800/80; }
+  .label { @apply text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-500; }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 h-9 px-4 rounded-md text-sm font-medium
+           bg-accent text-zinc-950 hover:bg-emerald-300 active:bg-emerald-500
+           transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+           shadow-[0_0_0_1px_rgba(16,185,129,0.5),0_8px_24px_-12px_rgba(16,185,129,0.6)];
+  }
+  .btn-ghost { @apply inline-flex items-center justify-center gap-2 h-9 px-3 rounded-md text-sm text-zinc-300 hover:text-white hover:bg-zinc-800/70 transition-colors; }
+  .btn-outline { @apply inline-flex items-center justify-center gap-2 h-9 px-3 rounded-md text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500 hover:bg-zinc-800/40 transition-colors; }
+  .input { @apply h-9 w-full rounded-md bg-zinc-900/80 border border-zinc-800 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20 transition; }
+  .chip { @apply inline-flex items-center gap-1 rounded-full bg-zinc-800/70 px-2 py-0.5 text-[11px] text-zinc-300; }
+}
+
+.shimmer-mask { position: relative; overflow: hidden; }
+.shimmer-mask::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 1.6s linear infinite;
+}

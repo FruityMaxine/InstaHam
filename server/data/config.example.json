@@ -1,0 +1,8 @@
+{
+  "cookies_path": "server/data/cookies.txt",
+  "download_dir": "downloads",
+  "concurrency": 2,
+  "include": ["posts", "stories", "highlights", "reels", "tagged"],
+  "videos_mode": "true",
+  "ffmpeg_location": "C:\\ffmpeg\\bin\\ffmpeg.exe"
+}

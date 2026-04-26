@@ -1,0 +1,2 @@
+# 保留目录结构。运行时文件 (cookies.txt / users.json / config.json / archive.sqlite)
+# 由 server/main.py 首次启动时自动创建，参见同目录下 *.example.*。

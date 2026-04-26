@@ -1,0 +1,8 @@
+# Netscape HTTP Cookie File
+# https://curl.haxx.se/rfc/cookie_spec.html
+# 把通过 Chrome 扩展「Get cookies.txt LOCALLY」导出的 instagram.com cookies
+# 内容粘贴到此文件，或直接通过 Web UI -> 设置 -> Cookies 粘贴并保存。
+#
+# 必需字段：sessionid、ds_user_id、csrftoken、mid
+# 示例（占位，请替换）：
+# .instagram.com  TRUE  /  TRUE  1798377514  sessionid  PLACEHOLDER

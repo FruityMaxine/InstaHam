@@ -1,0 +1,92 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Sensitive: 必须屏蔽 (never commit these)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Cookies (Instagram session credentials)
+Cookies.txt
+cookies.txt
+server/data/cookies.txt
+**/cookies.txt
+**/*.cookies
+
+# 用户列表 / 归档 / 任何运行时数据；只提交 *.example.* 模板
+server/data/users.json
+server/data/config.json
+server/data/archive.sqlite
+server/data/*.db
+server/data/*.sqlite*
+
+# 下载产物
+downloads/
+
+# 服务日志
+server.log
+server.err.log
+*.log
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 大文件 / 二进制 — gallery-dl.exe 跟随 repo 分发（开箱即用）
+# 仅屏蔽其他平台二进制，避免误提交
+# ─────────────────────────────────────────────────────────────────────────────
+
+bin/gallery-dl.bin
+bin/gallery-dl_x86.exe
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 私有 / 历史 / 临时
+# ─────────────────────────────────────────────────────────────────────────────
+
+_old_attempt/
+_smoke/shots/
+TEMP/
+tmp/
+.tmp/
+.cache/
+
+# Claude Code / Superpowers 私有 spec
+.claude/
+docs/superpowers/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Python
+# ─────────────────────────────────────────────────────────────────────────────
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Node / Vite / Frontend
+# ─────────────────────────────────────────────────────────────────────────────
+
+node_modules/
+web/dist/
+web/node_modules/
+.vite/
+*.local
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OS / IDE
+# ─────────────────────────────────────────────────────────────────────────────
+
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+.AppleDouble
+.LSOverride
+
+.vscode/
+.idea/
+*.iml
+*.suo
+*.user
+*.swp
+*.swo
