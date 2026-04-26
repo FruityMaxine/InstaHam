@@ -20,6 +20,7 @@ export type Config = {
   videos_mode: string;
   ffmpeg_location: string;
   group_by_type: boolean;
+  archive_auto_sync: boolean;
   cookies?: string;
   cookies_source: 'manual' | 'browser';
   cookies_browser: string; // edge | chrome | firefox | brave | vivaldi | opera | chromium
@@ -88,6 +89,22 @@ export const api = {
     fetch('/api/archive/stats').then(
       j<{ total: number; by_extractor: Record<string, number>; error?: string }>,
     ),
+  archiveSummary: () =>
+    fetch('/api/archive/summary').then(
+      j<{
+        total: number;
+        orphans: number;
+        users: { username: string; on_disk: number; in_archive: number }[];
+      }>,
+    ),
+  archiveSync: () =>
+    fetch('/api/archive/sync', { method: 'POST' }).then(j<{ removed: number }>),
+  archiveDeleteByUser: (username: string) =>
+    fetch(`/api/archive/by-user/${encodeURIComponent(username)}`, {
+      method: 'DELETE',
+    }).then(j<{ removed: number; username: string }>),
+  archiveDeleteAll: () =>
+    fetch('/api/archive/all', { method: 'DELETE' }).then(j<{ removed: number }>),
 
   // system
   shutdown: () => fetch('/api/system/shutdown', { method: 'POST' }).then(j<{ ok: boolean }>),

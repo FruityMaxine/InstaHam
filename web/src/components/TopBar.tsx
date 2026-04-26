@@ -9,6 +9,7 @@ export function TopBar() {
   const version = useStore((s) => s.galleryDlVersion);
   const archiveTotal = useStore((s) => s.archiveTotal);
   const setDrawerOpen = useStore((s) => s.setDrawerOpen);
+  const setArchiveOpen = useStore((s) => s.setArchiveOpen);
   const locale = useStore((s) => s.locale);
   const setLocale = useStore((s) => s.setLocale);
   const t = useT();
@@ -45,11 +46,18 @@ export function TopBar() {
         <Stat icon={<Box className="h-3.5 w-3.5" />} label="gallery-dl">
           <span className="font-mono text-zinc-200">{version || '--'}</span>
         </Stat>
-        <Stat icon={<Database className="h-3.5 w-3.5" />} label={t('topbar.archived')}>
+        <button
+          onClick={() => setArchiveOpen(true)}
+          className="flex items-center gap-2 px-1 py-0.5 -mx-1 rounded hover:bg-zinc-800/40 transition-colors group"
+          title={t('topbar.archive')}
+          aria-label="archive"
+        >
+          <span className="text-zinc-600 group-hover:text-zinc-400"><Database className="h-3.5 w-3.5" /></span>
+          <span className="label">{t('topbar.archived')}</span>
           <span className="font-mono text-zinc-100 text-[14px]">
             {archiveTotal.toLocaleString()}
           </span>
-        </Stat>
+        </button>
         <button
           className="btn-ghost h-8 px-2 gap-1.5"
           onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}

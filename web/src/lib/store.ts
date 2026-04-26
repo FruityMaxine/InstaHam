@@ -31,6 +31,7 @@ type State = {
   logs: LogLine[];
   logPaused: boolean;
   drawerOpen: boolean;
+  archiveOpen: boolean;
 
   // 顶部
   archiveTotal: number;
@@ -49,6 +50,7 @@ type State = {
   setActiveGroup: (g: string) => void;
   setSearch: (s: string) => void;
   setDrawerOpen: (b: boolean) => void;
+  setArchiveOpen: (b: boolean) => void;
   setConnected: (b: boolean) => void;
   setVersion: (v: string) => void;
   setArchiveTotal: (n: number) => void;
@@ -82,6 +84,7 @@ export const useStore = create<State>((set, get) => ({
   logs: [],
   logPaused: false,
   drawerOpen: false,
+  archiveOpen: false,
 
   archiveTotal: 0,
   galleryDlVersion: '',
@@ -107,6 +110,7 @@ export const useStore = create<State>((set, get) => ({
   setActiveGroup: (g) => set({ activeGroup: g }),
   setSearch: (s) => set({ search: s }),
   setDrawerOpen: (b) => set({ drawerOpen: b }),
+  setArchiveOpen: (b) => set({ archiveOpen: b }),
   setConnected: (b) => set({ connected: b }),
   setVersion: (v) => set({ galleryDlVersion: v }),
   setArchiveTotal: (n) => set({ archiveTotal: n }),

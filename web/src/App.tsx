@@ -3,6 +3,7 @@ import { TopBar } from './components/TopBar';
 import { Sidebar } from './components/Sidebar';
 import { TaskPanel } from './components/TaskPanel';
 import { ConfigDrawer } from './components/ConfigDrawer';
+import { ArchiveManager } from './components/ArchiveManager';
 import { api } from './lib/api';
 import { useStore } from './lib/store';
 
@@ -55,6 +56,7 @@ export default function App() {
         <TaskPanel />
       </main>
       <ConfigDrawer />
+      <ArchiveManager />
     </div>
   );
 }

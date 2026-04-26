@@ -39,6 +39,7 @@ export function ConfigDrawer() {
         ffmpeg_location: cfg.ffmpeg_location,
         include: cfg.include,
         group_by_type: cfg.group_by_type,
+        archive_auto_sync: cfg.archive_auto_sync,
         // cookies-from-browser 入口已从 UI 移除；强制 manual，保证保存后下载能直接走文件
         cookies_source: 'manual',
         cookies_browser: cfg.cookies_browser,
@@ -210,6 +211,18 @@ export function ConfigDrawer() {
                     </div>
                     <div className="text-[11px] text-zinc-500 mt-1">{t('cfg.groupByTypeHint')}</div>
                   </div>
+                </label>
+              </Field>
+
+              <Field label={t('cfg.autoSync')}>
+                <label className="flex items-start gap-2 cursor-pointer text-[13px] text-zinc-200">
+                  <input
+                    type="checkbox"
+                    className="accent-accent h-3.5 w-3.5 mt-0.5"
+                    checked={cfg.archive_auto_sync}
+                    onChange={(e) => setCfg({ ...cfg, archive_auto_sync: e.target.checked })}
+                  />
+                  <div className="flex-1 text-[11px] text-zinc-500 leading-relaxed">{t('cfg.autoSyncHint')}</div>
                 </label>
               </Field>
 

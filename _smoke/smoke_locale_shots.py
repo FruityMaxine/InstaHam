@@ -22,6 +22,12 @@ CONFIG_FILE = ROOT / "server" / "data" / "config.json"
 CONFIG_BACKUP = Path(__file__).parent / ".config_backup.json"
 COOKIES_FILE = ROOT / "server" / "data" / "cookies.txt"
 COOKIES_BACKUP = Path(__file__).parent / ".cookies_backup.txt"
+ARCHIVE_FILE = ROOT / "server" / "data" / "archive.sqlite"
+ARCHIVE_BACKUP = Path(__file__).parent / ".archive_backup.sqlite"
+INSTAGRAM_DIR = ROOT / "downloads" / "instagram"
+INSTAGRAM_BACKUP = ROOT / "downloads" / ".instagram.demo_backup"
+COOKIES_FILE = ROOT / "server" / "data" / "cookies.txt"
+COOKIES_BACKUP = Path(__file__).parent / ".cookies_backup.txt"
 
 DEMO_USERS = {
     "groups": ["默认", "friends"],
@@ -79,6 +85,101 @@ def restore_config() -> None:
     if CONFIG_BACKUP.exists():
         shutil.copy(CONFIG_BACKUP, CONFIG_FILE)
         CONFIG_BACKUP.unlink()
+
+
+# ---- archive + downloads/instagram dummy（保护 Archive Manager 截图隐私）----
+
+DEMO_USER_DIRS = {
+    "username":      ["1834567890123456701.jpg", "1834567890123456702.mp4"],
+    "friend_acct":   ["1834567890123456710.jpg"],
+    "creator_demo":  ["1834567890123456720.jpg", "1834567890123456721.jpg", "1834567890123456722.mp4"],
+}
+
+
+def use_demo_archive_and_downloads() -> None:
+    import sqlite3 as _sql
+    # archive: 备份原文件
+    if ARCHIVE_FILE.exists():
+        if ARCHIVE_BACKUP.exists():
+            ARCHIVE_BACKUP.unlink()
+        # 用 sqlite backup API 即使 server 持有锁也能复制
+        src = _sql.connect(f"file:{ARCHIVE_FILE}?mode=ro", uri=True, timeout=10)
+        dst = _sql.connect(str(ARCHIVE_BACKUP))
+        src.backup(dst)
+        dst.close()
+        src.close()
+    # 写 dummy archive（事务方式，不动文件本身，避开 server 读锁）
+    conn = _sql.connect(str(ARCHIVE_FILE), timeout=10)
+    conn.execute("CREATE TABLE IF NOT EXISTS archive (entry TEXT PRIMARY KEY)")
+    conn.execute("DELETE FROM archive")
+    demo_ids = []
+    for files in DEMO_USER_DIRS.values():
+        for f in files:
+            mid = f.split(".")[0]
+            demo_ids.append((f"instagram{mid}",))
+    conn.executemany("INSERT OR IGNORE INTO archive VALUES (?)", demo_ids)
+    conn.commit()
+    conn.close()
+
+    # downloads/instagram：rename 真实目录为 backup
+    if INSTAGRAM_DIR.exists():
+        if INSTAGRAM_BACKUP.exists():
+            shutil.rmtree(INSTAGRAM_BACKUP)
+        INSTAGRAM_DIR.rename(INSTAGRAM_BACKUP)
+    # 创建 dummy downloads/instagram/<user>/<file>
+    for user, files in DEMO_USER_DIRS.items():
+        d = INSTAGRAM_DIR / user
+        d.mkdir(parents=True, exist_ok=True)
+        for f in files:
+            (d / f).touch()
+
+
+def reset_demo_only() -> None:
+    """重新刷成 dummy 状态（不动备份）。用于 running 截图后、archive 截图前清掉残留。"""
+    import sqlite3 as _sql
+    conn = _sql.connect(str(ARCHIVE_FILE), timeout=10)
+    conn.execute("CREATE TABLE IF NOT EXISTS archive (entry TEXT PRIMARY KEY)")
+    conn.execute("DELETE FROM archive")
+    demo_ids = []
+    for files in DEMO_USER_DIRS.values():
+        for f in files:
+            mid = f.split(".")[0]
+            demo_ids.append((f"instagram{mid}",))
+    conn.executemany("INSERT OR IGNORE INTO archive VALUES (?)", demo_ids)
+    conn.commit()
+    conn.close()
+    if INSTAGRAM_DIR.exists():
+        for d in INSTAGRAM_DIR.iterdir():
+            if d.is_dir() and d.name not in DEMO_USER_DIRS:
+                shutil.rmtree(d, ignore_errors=True)
+        for user, files in DEMO_USER_DIRS.items():
+            ud = INSTAGRAM_DIR / user
+            ud.mkdir(parents=True, exist_ok=True)
+            for f in files:
+                (ud / f).touch()
+
+
+def restore_archive_and_downloads() -> None:
+    import sqlite3 as _sql
+    # 恢复 archive：用 sqlite backup 反向覆盖
+    if ARCHIVE_BACKUP.exists():
+        # 清空当前 + 从 backup 写回
+        conn = _sql.connect(str(ARCHIVE_FILE), timeout=10)
+        conn.execute("CREATE TABLE IF NOT EXISTS archive (entry TEXT PRIMARY KEY)")
+        conn.execute("DELETE FROM archive")
+        bak = _sql.connect(f"file:{ARCHIVE_BACKUP}?mode=ro", uri=True, timeout=10)
+        rows = bak.execute("SELECT entry FROM archive").fetchall()
+        bak.close()
+        conn.executemany("INSERT OR IGNORE INTO archive VALUES (?)", rows)
+        conn.commit()
+        conn.close()
+        ARCHIVE_BACKUP.unlink()
+
+    # 恢复 downloads/instagram
+    if INSTAGRAM_BACKUP.exists():
+        if INSTAGRAM_DIR.exists():
+            shutil.rmtree(INSTAGRAM_DIR)
+        INSTAGRAM_BACKUP.rename(INSTAGRAM_DIR)
 
 
 def shoot(locale: str) -> None:
@@ -141,6 +242,19 @@ def shoot(locale: str) -> None:
         page.wait_for_timeout(200)
 
         page.screenshot(path=str(out / "04-settings.png"), full_page=True)
+
+        # 4) Archive Manager — 关 drawer + kill gallery-dl 子进程 + 重置 dummy
+        page.mouse.click(50, 400)
+        page.wait_for_timeout(400)
+        # gallery-dl 子进程还在持有文件句柄，先 kill 再清目录
+        import subprocess as _sp
+        _sp.run(["taskkill", "/F", "/IM", "gallery-dl.exe"], capture_output=True)
+        page.wait_for_timeout(800)
+        reset_demo_only()
+        page.locator("button[aria-label='archive']").click()
+        page.wait_for_timeout(900)
+        page.screenshot(path=str(out / "05-archive.png"), full_page=True)
+
         b.close()
     print(f"  ✓ {locale} 截图完成 → {out}")
 
@@ -150,6 +264,7 @@ def main() -> int:
     use_demo_users()
     use_demo_cookies()
     force_manual_cookies()
+    use_demo_archive_and_downloads()
     try:
         for loc in ("zh", "en"):
             shoot(loc)
@@ -157,7 +272,8 @@ def main() -> int:
         restore_users()
         restore_cookies()
         restore_config()
-        print("  ✓ 已恢复 users.json / cookies.txt / config.json")
+        restore_archive_and_downloads()
+        print("  ✓ 已恢复 users.json / cookies.txt / config.json / archive.sqlite / downloads/instagram")
     return 0
 
 

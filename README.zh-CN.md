@@ -43,6 +43,10 @@
 
 <sub><em>设置 —— 粘贴 cookies，调下载目录 / 视频模式 / 抓取项，可选实验性并发下载，自带风险熔断。</em></sub>
 
+<img src="docs/screenshots/zh/05-archive.png" alt="Archive Manager" width="900"/>
+
+<sub><em>档案管理 —— 按用户查看 archive 条目，一键对齐磁盘（让你手动删过的文件能重下回来），可单删某用户或全清。</em></sub>
+
 </div>
 
 ## 🌟 特性
@@ -53,7 +57,7 @@
 - **分组管理** —— 左栏可折叠、搜索、行内增删、显示每个用户上次下载时间。
 - **Cookie 抽屉** —— Netscape 格式 textarea，可在保存前用公开账号验证 cookies 是否有效。
 - **实验性并发下载** *（默认关闭）* —— 1–4 个 worker 线程，配套 sleep 自动联动、抖动、风险熔断（任一 worker 命中 429 / login required / challenge 立即停所有子进程）。
-- **智能去重** —— 所有目标共享 `archive.sqlite`；重跑只产 skip 行，绝不重复下载。
+- **智能去重 + 自动对齐** —— 所有目标共享 `archive.sqlite`；重跑只产 skip 行，绝不重复下载。每次开始下载前自动扫磁盘，移除 archive 里"磁盘已删"的孤儿条目，让被你手动删过的文件能重下回来。顶栏档案管理面板支持按用户查看 / 单删 / 全清。
 - **一键退出** —— 顶栏 `⏻ 退出` 按钮直接终止后端进程。
 - **一文件启动器** —— `launcher.bat` 检测端口 → 隐窗启动 uvicorn → 轮询就绪 → 自动开默认浏览器。
 

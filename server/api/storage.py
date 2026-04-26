@@ -51,6 +51,7 @@ _CONFIG_DEFAULTS = {
     "videos_mode": "true",
     "ffmpeg_location": "C:\\ffmpeg\\bin\\ffmpeg.exe",
     "group_by_type": True,
+    "archive_auto_sync": True,
     "cookies_source": "manual",
     "cookies_browser": "edge",
     "parallel_enabled": False,

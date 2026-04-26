@@ -6,6 +6,7 @@
   "videos_mode": "true",
   "ffmpeg_location": "C:\\ffmpeg\\bin\\ffmpeg.exe",
   "group_by_type": true,
+  "archive_auto_sync": true,
   "cookies_source": "manual",
   "cookies_browser": "edge",
   "parallel_enabled": false,

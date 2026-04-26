@@ -43,6 +43,10 @@ Built on top of [`gallery-dl`](https://codeberg.org/mikf/gallery-dl), wrapped in
 
 <sub><em>Settings — paste cookies, tweak download dir / video mode / include subset, opt-in experimental parallel downloads with circuit breaker.</em></sub>
 
+<img src="docs/screenshots/en/05-archive.png" alt="Archive Manager" width="900"/>
+
+<sub><em>Archive Manager — per-user view of downloaded entries, one-click sync to align archive with disk (re-fetches files you've manually deleted), per-user or full wipe.</em></sub>
+
 </div>
 
 ## 🌟 Features
@@ -53,7 +57,7 @@ Built on top of [`gallery-dl`](https://codeberg.org/mikf/gallery-dl), wrapped in
 - **Group management** — collapsible left pane, search, inline add/delete, last-download timestamp per user.
 - **Cookies drawer** — paste a Netscape-format `cookies.txt`, run a one-click sanity test against a public account before committing.
 - **Experimental parallel downloads** *(opt-in)* — 1–4 worker threads with auto sleep, jitter, and circuit breaker that kills all subprocesses on the first 429 / login required / challenge.
-- **Smart deduplication** — shared `archive.sqlite` across all targets; reruns produce skip lines, not duplicates.
+- **Smart deduplication + auto-sync** — shared `archive.sqlite` across all targets; reruns produce skip lines, not duplicates. Before each run InstaHam scans disk and removes "ghost" archive entries (files you manually deleted) so they can be re-downloaded. Per-user / full archive management UI in the top bar.
 - **One-click shutdown** — `⏻ Exit` button kills the backend process from the browser.
 - **One-file launcher** — `launcher.bat` checks the port, starts `uvicorn` hidden, polls until ready, then opens your default browser.
 

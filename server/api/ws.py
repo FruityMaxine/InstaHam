@@ -120,6 +120,25 @@ async def download_ws(ws: WebSocket) -> None:
     # 新一次下载开始 → 清空历史 events 缓存
     clear_recent()
 
+    # 自动 archive 对齐：删掉磁盘已没的孤儿 entries，让 gallery-dl 能重下回来
+    if cfg.get("archive_auto_sync", True):
+        try:
+            from server.core import archive_sync
+            from pathlib import Path as _P
+            dl_dir = _P(cfg.get("download_dir", "downloads"))
+            if not dl_dir.is_absolute():
+                from .storage import ROOT as _ROOT
+                dl_dir = _ROOT / dl_dir
+            removed = archive_sync.sync_archive_to_disk(ARCHIVE_FILE, dl_dir.resolve())
+            if removed > 0:
+                ev_msg = {"type": "log", "text": f"[archive] auto-sync: removed {removed} orphan entries (will be re-downloaded)"}
+                push_recent(ev_msg)
+                await ws.send_json(ev_msg)
+        except Exception as e:
+            ev_msg = {"type": "warning", "text": f"[archive] auto-sync failed: {e}"}
+            push_recent(ev_msg)
+            await ws.send_json(ev_msg)
+
     meta_ev = {"type": "meta", "total": len(targets), "targets": [t[0] for t in targets]}
     push_recent(meta_ev)
     await ws.send_json(meta_ev)
