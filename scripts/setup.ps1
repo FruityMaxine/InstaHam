@@ -58,4 +58,4 @@ Push-Location (Join-Path $root 'web')
 Pop-Location
 
 Write-Host ""
-Write-Host "完成。双击 launcher.bat 或执行 launcher.ps1 启动 InstaHam。" -ForegroundColor Green
+Write-Host "完成。双击 launcher.bat 启动 InstaHam。" -ForegroundColor Green

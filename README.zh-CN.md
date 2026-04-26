@@ -150,8 +150,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1
 
 ```
 InstaHam/
-├── launcher.bat              # 一行包装 -> launcher.ps1
-├── launcher.ps1              # 端口轮询 + 隐窗 uvicorn + 自动浏览器
+├── launcher.bat              # 端口轮询 + 隐窗 uvicorn + 自动浏览器
 ├── scripts/
 │   └── setup.ps1             # 下载 gallery-dl + 装依赖 + 构建
 ├── bin/gallery-dl.exe        # 自带（GPL-2.0；详见 bin/README.md）

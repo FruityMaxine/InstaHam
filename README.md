@@ -150,8 +150,7 @@ You can edit these directly in the file or via the in‑app settings drawer.
 
 ```
 InstaHam/
-├── launcher.bat              # 1‑line wrapper -> launcher.ps1
-├── launcher.ps1              # port poll, hidden uvicorn, auto‑browser
+├── launcher.bat              # port poll + hidden uvicorn + auto-browser
 ├── scripts/
 │   └── setup.ps1             # download gallery-dl + install deps + build
 ├── bin/gallery-dl.exe        # bundled (GPL-2.0; see bin/README.md)
