@@ -109,6 +109,19 @@ const zh: Dict = {
   'cfg.parallelBreaker': '风险熔断',
   'cfg.parallelBreakerHint': '检测到 429 / login required / challenge 任一 worker 报错时，立即终止所有正在跑的子进程',
   'cfg.parallelWarn': '⚠ 并发可能触发 Instagram 风控（弹验证码 / 临时封号）。建议 sleep ≥ 工作线程数 × 1.0 秒。',
+
+  // BrowserCookieGate
+  'gate.title.notLogged': '尚未登录',
+  'gate.body.notLogged': '在 {browser} 中找不到 Instagram cookies。请先打开 {browser} → 访问 instagram.com → 登录账号 → 然后回到这里点 "开始下载"。',
+  'gate.title.running': '请先关闭 {browser}',
+  'gate.body.running': '{browser} 当前正在运行，cookies 文件被独占锁定。完全关闭 {browser}（包括所有标签页和后台）后，点 "重试"。',
+  'gate.title.self': '需要关闭当前浏览器',
+  'gate.body.self': '你选的 cookies 来源 {browser} 也是当前 InstaHam UI 所在的浏览器。\n\n下载即将启动，然后请你执行：\n1. 完全关闭整个 {browser}（包括所有标签页和后台进程）\n2. 等几秒，下载会在后台继续\n3. 任何时候重新打开浏览器访问 http://127.0.0.1:8765\n\n之前的日志会自动恢复。',
+  'gate.cancel': '取消',
+  'gate.retry': '我已关闭，重试',
+  'gate.confirmSelf': '我会手动关闭浏览器',
+  'gate.checking': '检测中…',
+  'gate.startedHint': '下载已启动！现在请手动关闭整个浏览器，下载会在后台继续。完成后重新打开 http://127.0.0.1:8765 查看结果。',
   'cfg.saveOk': '已保存 · cookies {bytes} 字节 · 配置已更新',
   'cfg.saveFail': '保存失败：{msg}',
 };
@@ -215,6 +228,19 @@ const en: Dict = {
   'cfg.parallelBreaker': 'Circuit breaker',
   'cfg.parallelBreakerHint': 'When any worker hits 429 / login required / challenge, all running subprocesses are terminated immediately',
   'cfg.parallelWarn': '⚠ Parallelism may trigger Instagram rate-limiting (captcha / temporary suspension). Recommend sleep ≥ workers × 1.0 s.',
+
+  // BrowserCookieGate
+  'gate.title.notLogged': 'Not logged in yet',
+  'gate.body.notLogged': 'No Instagram cookies found in {browser}. Open {browser} → visit instagram.com → log in → come back here and click "Start" again.',
+  'gate.title.running': 'Close {browser} first',
+  'gate.body.running': '{browser} is currently running and its cookies file is exclusively locked. Fully close {browser} (all tabs and background processes), then click "Retry".',
+  'gate.title.self': 'Close this browser to proceed',
+  'gate.body.self': 'The cookies source you picked ({browser}) is also the browser running this InstaHam UI.\n\nThe download will start now. Then:\n1. Fully close {browser} (every tab and background process)\n2. Wait a moment — the download keeps running in the background\n3. Reopen any browser to http://127.0.0.1:8765 whenever\n\nPrevious logs are auto-restored on reconnect.',
+  'gate.cancel': 'Cancel',
+  'gate.retry': "I closed it, retry",
+  'gate.confirmSelf': "I'll close the browser manually",
+  'gate.checking': 'Checking…',
+  'gate.startedHint': 'Download started! Now manually close the browser. The download keeps running in the background. Reopen http://127.0.0.1:8765 anytime to see results.',
   'cfg.saveOk': 'Saved · cookies {bytes} bytes · config updated',
   'cfg.saveFail': 'Save failed: {msg}',
 };

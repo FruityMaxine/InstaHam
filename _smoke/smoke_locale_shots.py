@@ -18,6 +18,8 @@ URL = "http://127.0.0.1:8765"
 
 USERS_FILE = ROOT / "server" / "data" / "users.json"
 USERS_BACKUP = Path(__file__).parent / ".users_backup.json"
+CONFIG_FILE = ROOT / "server" / "data" / "config.json"
+CONFIG_BACKUP = Path(__file__).parent / ".config_backup.json"
 
 DEMO_USERS = {
     "groups": ["默认", "friends"],
@@ -48,9 +50,34 @@ def restore_users() -> None:
         USERS_BACKUP.unlink()
 
 
+def force_manual_cookies() -> None:
+    """截图时强制 cookies_source=manual，避免 home 截图触发 BrowserCookieGate。"""
+    if CONFIG_FILE.exists():
+        shutil.copy(CONFIG_FILE, CONFIG_BACKUP)
+        cfg = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+        cfg["cookies_source"] = "manual"
+        CONFIG_FILE.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def restore_config() -> None:
+    if CONFIG_BACKUP.exists():
+        shutil.copy(CONFIG_BACKUP, CONFIG_FILE)
+        CONFIG_BACKUP.unlink()
+
+
 def shoot(locale: str) -> None:
     out = OUT / locale
     out.mkdir(parents=True, exist_ok=True)
+
+    # 截图前清空 server 端事件缓存，避免 home 截图显示上次残留日志
+    import urllib.request
+    try:
+        urllib.request.urlopen(
+            urllib.request.Request(f"{URL}/api/system/recent-events/clear", method="POST"),
+            timeout=3,
+        )
+    except Exception:
+        pass
 
     with sync_playwright() as p:
         b = p.chromium.launch(headless=True)
@@ -108,12 +135,14 @@ def shoot(locale: str) -> None:
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     use_demo_users()
+    force_manual_cookies()
     try:
         for loc in ("zh", "en"):
             shoot(loc)
     finally:
         restore_users()
-        print("  ✓ 已恢复 users.json")
+        restore_config()
+        print("  ✓ 已恢复 users.json / config.json")
     return 0
 
 

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Play, Square, Layers, CheckSquare, Tag, Wand2 } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { openDownloadWs, type DownloadRequest } from '../lib/api';
+import { openDownloadWs, api, type DownloadRequest } from '../lib/api';
 import { useT, displayGroupName } from '../lib/i18n';
 import { ProgressBars } from './ProgressBars';
 import { LogStream } from './LogStream';
+import { BrowserCookieGate } from './BrowserCookieGate';
 import { cn } from '../lib/cn';
 
 export function TaskPanel() {
@@ -24,6 +25,17 @@ export function TaskPanel() {
 
   const [adhocText, setAdhocText] = useState('');
   const [groupChoice, setGroupChoice] = useState(activeGroup !== 'all' ? activeGroup : groups[0] ?? '默认');
+  const [pendingReq, setPendingReq] = useState<DownloadRequest | null>(null);
+  const [gateBrowser, setGateBrowser] = useState<string | null>(null);
+  const [postStartHint, setPostStartHint] = useState(false);
+
+  // mount 时拉一次 server 缓存的事件，重连后能看到关浏览器期间的进度
+  const hydrateLogs = useStore((s) => s.hydrateLogs);
+  useEffect(() => {
+    api.recentEvents().then((r) => {
+      if (r.events && r.events.length) hydrateLogs(r.events);
+    }).catch(() => {});
+  }, [hydrateLogs]);
 
   const targetCount =
     mode === 'all'
@@ -34,15 +46,32 @@ export function TaskPanel() {
       ? selected.size
       : adhocText.split(/\s+/).filter(Boolean).length;
 
-  function start() {
+  async function start() {
     if (running) return;
     const req: DownloadRequest = { mode };
     if (mode === 'selected') req.users = Array.from(selected);
     if (mode === 'group') req.group = groupChoice;
     if (mode === 'adhoc') req.urls = adhocText.split(/\s+/).filter(Boolean);
 
+    // 如果 cookies 来源是浏览器 → 先过 BrowserCookieGate
+    try {
+      const cfg = await api.getConfig();
+      if (cfg.cookies_source === 'browser') {
+        setPendingReq(req);
+        setGateBrowser(cfg.cookies_browser);
+        return; // 等 gate resolve
+      }
+    } catch {
+      // 配置拉失败兜底直接启动
+    }
+
+    actuallyStart(req);
+  }
+
+  function actuallyStart(req: DownloadRequest, fromSelfBrowser = false) {
     const sock = openDownloadWs(req, pushEvent, finishRun);
     startRun(sock);
+    if (fromSelfBrowser) setPostStartHint(true);
   }
 
   function stop() {
@@ -99,8 +128,54 @@ export function TaskPanel() {
       </div>
 
       <LogStream />
+
+      {gateBrowser && (
+        <BrowserCookieGate
+          browser={gateBrowser}
+          onResolve={(proceed) => {
+            const isSelfBrowser = isCurrentBrowser(gateBrowser);
+            setGateBrowser(null);
+            if (proceed && pendingReq) {
+              actuallyStart(pendingReq, isSelfBrowser);
+            }
+            setPendingReq(null);
+          }}
+        />
+      )}
+
+      {postStartHint && (
+        <div className="fixed bottom-4 right-4 z-[55] panel max-w-[400px] p-3 text-[12px] text-amber-400 bg-amber-500/5 border-amber-500/30 animate-fade-in">
+          <div className="flex items-start gap-2">
+            <span className="text-amber-400">⚠</span>
+            <div className="flex-1 leading-relaxed">{t('gate.startedHint')}</div>
+            <button
+              className="text-amber-400 opacity-60 hover:opacity-100"
+              onClick={() => setPostStartHint(false)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
+}
+
+function isCurrentBrowser(browser: string): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  const tests: Record<string, RegExp> = {
+    edge: /Edg\//i,
+    firefox: /Firefox\//i,
+    opera: /OPR\/|Opera\//i,
+    vivaldi: /Vivaldi\//i,
+    // chrome 必须排除 Edg / OPR / Vivaldi
+    chrome: /Chrome\//i,
+  };
+  if (browser === 'chrome') {
+    return /Chrome\//i.test(ua) && !/Edg\/|OPR\/|Vivaldi\//i.test(ua);
+  }
+  return tests[browser]?.test(ua) ?? false;
 }
 
 function ModeBtn({

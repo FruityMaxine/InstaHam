@@ -58,6 +58,7 @@ type State = {
   pushEvent: (e: WsEvent) => void;
   clearLogs: () => void;
   togglePause: () => void;
+  hydrateLogs: (events: WsEvent[]) => void;
 };
 
 let logSeq = 0;
@@ -128,6 +129,31 @@ export const useStore = create<State>((set, get) => ({
   finishRun: () => set({ running: false, ws: null }),
   togglePause: () => set({ logPaused: !get().logPaused }),
   clearLogs: () => set({ logs: [] }),
+
+  hydrateLogs: (events) => {
+    // 用 server 缓存的 events 重建 logs（用于关浏览器后重新打开恢复进度）
+    const out: LogLine[] = [];
+    for (const e of events) {
+      let text: string;
+      if (e.type === 'meta') {
+        text = tr(get().locale, 'log.meta', { n: e.total, targets: e.targets.join(', ') });
+      } else if (e.type === 'user_start') {
+        text = tr(get().locale, 'log.userStart', { i: e.index, n: e.total, user: e.user });
+      } else if ('text' in e) {
+        text = e.text;
+      } else {
+        text = JSON.stringify(e);
+      }
+      out.push({
+        id: ++logSeq,
+        type: e.type,
+        text,
+        user: 'user' in e ? e.user : undefined,
+        ts: Date.now(),
+      });
+    }
+    set({ logs: out });
+  },
 
   pushEvent: (e) => {
     const s = get();

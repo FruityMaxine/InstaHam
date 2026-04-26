@@ -90,6 +90,12 @@ export const api = {
 
   // system
   shutdown: () => fetch('/api/system/shutdown', { method: 'POST' }).then(j<{ ok: boolean }>),
+  browserStatus: (name: string) =>
+    fetch(`/api/system/browser-status?name=${encodeURIComponent(name)}`).then(
+      j<{ ok: boolean; unknown?: boolean; running: boolean; cookies_exists: boolean }>,
+    ),
+  recentEvents: () =>
+    fetch('/api/system/recent-events').then(j<{ events: WsEvent[] }>),
 };
 
 // ---- WebSocket helper ----
