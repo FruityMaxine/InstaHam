@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ChevronDown, Plus, Search, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { api, type User } from '../lib/api';
-import { useT } from '../lib/i18n';
+import { useT, displayGroupName } from '../lib/i18n';
 import { UserRow } from './UserRow';
 import { cn } from '../lib/cn';
 
@@ -17,12 +17,17 @@ export function Sidebar() {
   const selectedUserIds = useStore((s) => s.selectedUserIds);
   const selectAllVisible = useStore((s) => s.selectAllVisible);
   const clearSelection = useStore((s) => s.clearSelection);
+  const locale = useStore((s) => s.locale);
   const t = useT();
 
   const [adding, setAdding] = useState(false);
   const [draftName, setDraftName] = useState('');
   const [draftGroup, setDraftGroup] = useState(groups[0] ?? '默认');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  // 新建分组 inline 输入态
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [draftGroupName, setDraftGroupName] = useState('');
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -49,6 +54,36 @@ export function Sidebar() {
       setAdding(false);
     } catch (e) {
       alert(t('sidebar.addFail', { msg: (e as Error).message }));
+    }
+  }
+
+  async function handleAddGroup() {
+    const name = draftGroupName.trim();
+    if (!name) {
+      setAddingGroup(false);
+      return;
+    }
+    try {
+      const newGroups = await api.addGroup(name);
+      setUsers(users, newGroups);
+      setDraftGroupName('');
+      setAddingGroup(false);
+    } catch (e) {
+      alert(t('group.addFail', { msg: (e as Error).message }));
+    }
+  }
+
+  async function handleDeleteGroup(name: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm(t('group.deleteConfirm', { name: displayGroupName(name, locale) }))) return;
+    try {
+      await api.deleteGroup(name);
+      // 后端会把该分组用户回退到默认 → 重新拉一遍最新状态
+      const fresh = await api.listUsers();
+      setUsers(fresh.users, fresh.groups);
+      if (activeGroup === name) setActiveGroup('all');
+    } catch (err) {
+      alert(t('group.deleteFail', { msg: (err as Error).message }));
     }
   }
 
@@ -87,7 +122,7 @@ export function Sidebar() {
             </button>
           )}
         </div>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 items-center">
           <GroupTab
             label={t('sidebar.all')}
             active={activeGroup === 'all'}
@@ -97,12 +132,40 @@ export function Sidebar() {
           {groups.map((g) => (
             <GroupTab
               key={g}
-              label={g}
+              label={displayGroupName(g, locale)}
               active={activeGroup === g}
               onClick={() => setActiveGroup(g)}
               count={users.filter((u) => u.group === g).length}
+              onDelete={g === '默认' ? undefined : (e) => handleDeleteGroup(g, e)}
+              deleteTitle={t('group.deleteTitle')}
             />
           ))}
+          {addingGroup ? (
+            <input
+              autoFocus
+              className="h-6 w-24 rounded-full bg-zinc-900 border border-accent/40 px-2 text-[11px] text-zinc-100 outline-none focus:ring-2 focus:ring-accent/30"
+              placeholder={t('group.addPlaceholder')}
+              value={draftGroupName}
+              onChange={(e) => setDraftGroupName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAddGroup();
+                if (e.key === 'Escape') {
+                  setDraftGroupName('');
+                  setAddingGroup(false);
+                }
+              }}
+              onBlur={handleAddGroup}
+            />
+          ) : (
+            <button
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-800/60 text-zinc-400 hover:text-accent hover:bg-accent/10 transition"
+              onClick={() => setAddingGroup(true)}
+              title={t('group.addTitle')}
+              aria-label="new-group"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -124,7 +187,7 @@ export function Sidebar() {
             >
               {groups.map((g) => (
                 <option key={g} value={g}>
-                  {g}
+                  {displayGroupName(g, locale)}
                 </option>
               ))}
             </select>
@@ -168,7 +231,7 @@ export function Sidebar() {
               >
                 <span className="flex items-center gap-1.5">
                   <ChevronDown className={cn('h-3 w-3 transition', collapsed[g] && '-rotate-90')} />
-                  <span className="font-medium">{g}</span>
+                  <span className="font-medium">{displayGroupName(g, locale)}</span>
                   <span className="font-mono text-zinc-600">{list.length}</span>
                 </span>
               </button>
@@ -192,25 +255,43 @@ function GroupTab({
   active,
   count,
   onClick,
+  onDelete,
+  deleteTitle,
 }: {
   label: string;
   active: boolean;
   count: number;
   onClick: () => void;
+  onDelete?: (e: React.MouseEvent) => void;
+  deleteTitle?: string;
 }) {
   return (
-    <button
-      onClick={onClick}
+    <span
       className={cn(
-        'flex items-center gap-1 rounded-full px-2.5 h-6 text-[11px] transition-colors',
+        'group/tab inline-flex items-center rounded-full transition-colors',
         active
           ? 'bg-accent/15 text-accent ring-1 ring-accent/40'
           : 'bg-zinc-800/60 text-zinc-400 hover:text-zinc-200',
       )}
     >
-      <span>{label}</span>
-      <span className="font-mono opacity-70">{count}</span>
-    </button>
+      <button
+        onClick={onClick}
+        className="flex items-center gap-1 px-2.5 h-6 text-[11px]"
+      >
+        <span>{label}</span>
+        <span className="font-mono opacity-70">{count}</span>
+      </button>
+      {onDelete && (
+        <button
+          onClick={onDelete}
+          title={deleteTitle}
+          aria-label="delete-group"
+          className="grid h-6 w-5 place-items-center text-zinc-600 opacity-0 group-hover/tab:opacity-100 hover:text-rose-400 transition"
+        >
+          <X className="h-2.5 w-2.5" />
+        </button>
+      )}
+    </span>
   );
 }
 

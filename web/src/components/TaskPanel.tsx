@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Play, Square, Layers, CheckSquare, Tag, Wand2 } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { openDownloadWs, type DownloadRequest } from '../lib/api';
-import { useT } from '../lib/i18n';
+import { useT, displayGroupName } from '../lib/i18n';
 import { ProgressBars } from './ProgressBars';
 import { LogStream } from './LogStream';
 import { cn } from '../lib/cn';
@@ -19,6 +19,7 @@ export function TaskPanel() {
   const startRun = useStore((s) => s.startRun);
   const finishRun = useStore((s) => s.finishRun);
   const pushEvent = useStore((s) => s.pushEvent);
+  const locale = useStore((s) => s.locale);
   const t = useT();
 
   const [adhocText, setAdhocText] = useState('');
@@ -64,7 +65,7 @@ export function TaskPanel() {
           {mode === 'group' && (
             <select className="input h-9 w-32" value={groupChoice} onChange={(e) => setGroupChoice(e.target.value)}>
               {groups.map((g) => (
-                <option key={g} value={g}>{g}</option>
+                <option key={g} value={g}>{displayGroupName(g, locale)}</option>
               ))}
             </select>
           )}

@@ -35,6 +35,15 @@ const zh: Dict = {
   'sidebar.empty1': '暂无匹配用户。',
   'sidebar.empty2': '点右上「新增」添加。',
 
+  // Groups
+  'group.default': '默认',
+  'group.addTitle': '新建分组',
+  'group.addPlaceholder': '分组名',
+  'group.deleteTitle': '删除该分组',
+  'group.deleteConfirm': '删除分组「{name}」？该分组下的用户会回到默认分组。',
+  'group.deleteFail': '删除失败：{msg}',
+  'group.addFail': '新建失败：{msg}',
+
   // UserRow
   'user.never': '从未下载',
   'user.deleteConfirm': '删除 @{name}？',
@@ -117,6 +126,15 @@ const en: Dict = {
   'sidebar.empty1': 'No matching users.',
   'sidebar.empty2': 'Click "Add" in the top-right to add one.',
 
+  // Groups
+  'group.default': 'Default',
+  'group.addTitle': 'New group',
+  'group.addPlaceholder': 'Group name',
+  'group.deleteTitle': 'Delete this group',
+  'group.deleteConfirm': 'Delete group "{name}"? Users in it will move to the default group.',
+  'group.deleteFail': 'Delete failed: {msg}',
+  'group.addFail': 'Add failed: {msg}',
+
   // UserRow
   'user.never': 'Never downloaded',
   'user.deleteConfirm': 'Delete @{name}?',
@@ -174,12 +192,17 @@ const en: Dict = {
 const dicts: Record<Locale, Dict> = { zh, en };
 
 export function detectInitialLocale(): Locale {
-  if (typeof window === 'undefined') return 'zh';
+  if (typeof window === 'undefined') return 'en';
   const saved = window.localStorage.getItem('instaham.locale') as Locale | null;
   if (saved === 'zh' || saved === 'en') return saved;
-  // 浏览器语言：以 zh 开头视为中文，其他默认英文
-  const nav = navigator.language || '';
-  return nav.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  // 第一次访问无缓存 → 默认英文（用户手动切换后会写入 localStorage 持久化）
+  return 'en';
+}
+
+/** 内部存储用 "默认" 作为分组标识；UI 渲染时按 locale 翻译 */
+export function displayGroupName(name: string, locale: Locale): string {
+  if (name === '默认') return locale === 'zh' ? '默认' : 'Default';
+  return name;
 }
 
 export function persistLocale(l: Locale): void {

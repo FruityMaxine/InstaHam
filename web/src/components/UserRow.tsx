@@ -3,7 +3,7 @@ import { Pencil, Trash2, Check, X, Clock } from 'lucide-react';
 import type { User } from '../lib/api';
 import { api } from '../lib/api';
 import { useStore } from '../lib/store';
-import { useT } from '../lib/i18n';
+import { useT, displayGroupName } from '../lib/i18n';
 import { cn } from '../lib/cn';
 
 export function UserRow({ user }: { user: User }) {
@@ -13,6 +13,7 @@ export function UserRow({ user }: { user: User }) {
   const selected = useStore((s) => s.selectedUserIds.has(user.id));
   const toggleSelected = useStore((s) => s.toggleSelected);
   const currentUser = useStore((s) => s.currentUser);
+  const locale = useStore((s) => s.locale);
   const t = useT();
 
   const [editing, setEditing] = useState(false);
@@ -64,7 +65,7 @@ export function UserRow({ user }: { user: User }) {
             onChange={(e) => setGrp(e.target.value)}
           >
             {groups.map((g) => (
-              <option key={g} value={g}>{g}</option>
+              <option key={g} value={g}>{displayGroupName(g, locale)}</option>
             ))}
           </select>
           <button className="btn-ghost h-6 w-6 p-0" onClick={save}>
