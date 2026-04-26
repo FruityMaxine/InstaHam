@@ -7,16 +7,6 @@ import { api, type Config } from '../lib/api';
 import { useT } from '../lib/i18n';
 import { cn } from '../lib/cn';
 
-const BROWSERS = [
-  { id: 'edge', label: 'Microsoft Edge' },
-  { id: 'chrome', label: 'Google Chrome' },
-  { id: 'firefox', label: 'Firefox' },
-  { id: 'brave', label: 'Brave' },
-  { id: 'vivaldi', label: 'Vivaldi' },
-  { id: 'opera', label: 'Opera' },
-  { id: 'chromium', label: 'Chromium' },
-];
-
 export function ConfigDrawer() {
   const open = useStore((s) => s.drawerOpen);
   const setOpen = useStore((s) => s.setDrawerOpen);
@@ -48,7 +38,8 @@ export function ConfigDrawer() {
         videos_mode: cfg.videos_mode,
         ffmpeg_location: cfg.ffmpeg_location,
         include: cfg.include,
-        cookies_source: cfg.cookies_source,
+        // cookies-from-browser 入口已从 UI 移除；强制 manual，保证保存后下载能直接走文件
+        cookies_source: 'manual',
         cookies_browser: cfg.cookies_browser,
         parallel_enabled: cfg.parallel_enabled,
         parallel_workers: cfg.parallel_workers,
@@ -119,48 +110,17 @@ export function ConfigDrawer() {
             </div>
           ) : (
             <>
-              {/* Cookies 来源切换 */}
-              <Field label={t('cfg.cookieSource')}>
-                <div className="flex gap-1 p-0.5 rounded-md border border-zinc-800 bg-zinc-900/40 mb-2">
-                  <SrcBtn
-                    active={cfg.cookies_source === 'manual'}
-                    onClick={() => setCfg({ ...cfg, cookies_source: 'manual' })}
-                  >
-                    {t('cfg.cookieSrcManual')}
-                  </SrcBtn>
-                  <SrcBtn
-                    active={cfg.cookies_source === 'browser'}
-                    onClick={() => setCfg({ ...cfg, cookies_source: 'browser' })}
-                  >
-                    {t('cfg.cookieSrcBrowser')}
-                  </SrcBtn>
-                </div>
-
-                {cfg.cookies_source === 'manual' ? (
-                  <>
-                    <textarea
-                      value={cookies}
-                      onChange={(e) => setCookies(e.target.value)}
-                      rows={8}
-                      className="input min-h-[160px] font-mono text-[11px] leading-snug"
-                      placeholder={t('cfg.cookiesPlaceholder')}
-                    />
-                    <div className="text-[11px] text-zinc-500 mt-1">{t('cfg.cookiesHint')}</div>
-                  </>
-                ) : (
-                  <div className="space-y-2">
-                    <select
-                      className="input"
-                      value={cfg.cookies_browser}
-                      onChange={(e) => setCfg({ ...cfg, cookies_browser: e.target.value })}
-                    >
-                      {BROWSERS.map((b) => (
-                        <option key={b.id} value={b.id}>{b.label}</option>
-                      ))}
-                    </select>
-                    <div className="text-[11px] text-zinc-500 leading-relaxed">{t('cfg.browserHint')}</div>
-                  </div>
-                )}
+              {/* Cookies (Netscape 格式) — 仅手动模式暴露给用户。
+                  cookies-from-browser 的后端代码仍保留，但此处不暴露入口。 */}
+              <Field label={t('cfg.cookies')}>
+                <textarea
+                  value={cookies}
+                  onChange={(e) => setCookies(e.target.value)}
+                  rows={8}
+                  className="input min-h-[160px] font-mono text-[11px] leading-snug"
+                  placeholder={t('cfg.cookiesPlaceholder')}
+                />
+                <div className="text-[11px] text-zinc-500 mt-1">{t('cfg.cookiesHint')}</div>
               </Field>
 
               <Field label={t('cfg.dir')}>
@@ -367,31 +327,6 @@ export function ConfigDrawer() {
         </div>
       </aside>
     </>
-  );
-}
-
-function SrcBtn({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex-1 px-3 h-7 rounded text-[12px] transition-colors',
-        active
-          ? 'bg-accent/15 text-accent'
-          : 'text-zinc-500 hover:text-zinc-200',
-      )}
-    >
-      {children}
-    </button>
   );
 }
 

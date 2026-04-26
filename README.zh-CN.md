@@ -39,9 +39,9 @@
 
 <sub><em>下载进行中 —— 双层进度条，流式日志，不定进度条横扫 0–100%。</em></sub>
 
-<img src="docs/screenshots/zh/04-settings.png" alt="设置抽屉：浏览器 cookies + 并发" width="900"/>
+<img src="docs/screenshots/zh/04-settings.png" alt="设置抽屉" width="900"/>
 
-<sub><em>设置 —— 直接从浏览器读取 cookies（无需手动导出），可选实验性并发下载，自带风险熔断。</em></sub>
+<sub><em>设置 —— 粘贴 cookies，调下载目录 / 视频模式 / 抓取项，可选实验性并发下载，自带风险熔断。</em></sub>
 
 </div>
 
@@ -51,7 +51,7 @@
 - **双层进度条** —— 总进度（`N / M` 个用户）+ 当前用户进度（新文件数 + 跳过数）。
 - **四种下载模式** —— 全量、按分组、仅勾选、临时（粘贴任意 IG URL，不入用户列表）。
 - **分组管理** —— 左栏可折叠、搜索、行内增删、显示每个用户上次下载时间。
-- **Cookies 两种来源** —— 手动粘贴 Netscape 文件，**或** 直接从浏览器读取（Edge / Chrome / Firefox / Brave / Vivaldi / Opera / Chromium）。浏览器模式跟着你日常 IG 登录态自动续期，**永不过期**。
+- **Cookie 抽屉** —— Netscape 格式 textarea，可在保存前用公开账号验证 cookies 是否有效。
 - **实验性并发下载** *（默认关闭）* —— 1–4 个 worker 线程，配套 sleep 自动联动、抖动、风险熔断（任一 worker 命中 429 / login required / challenge 立即停所有子进程）。
 - **智能去重** —— 所有目标共享 `archive.sqlite`；重跑只产 skip 行，绝不重复下载。
 - **一键退出** —— 顶栏 `⏻ 退出` 按钮直接终止后端进程。

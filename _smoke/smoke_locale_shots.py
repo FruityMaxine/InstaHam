@@ -2,7 +2,7 @@
 
 为保护用户隐私：
 - 截图前临时把 server/data/users.json 替换成 dummy（仅含 1 个占位用户）
-- settings 截图时切到「从浏览器读取」模式，避免 cookies textarea 显示真实 cookies
+- 截图前把 server/data/cookies.txt 替换成空 dummy（settings textarea 显示空）
 - 截图后立即恢复
 """
 from __future__ import annotations
@@ -20,6 +20,8 @@ USERS_FILE = ROOT / "server" / "data" / "users.json"
 USERS_BACKUP = Path(__file__).parent / ".users_backup.json"
 CONFIG_FILE = ROOT / "server" / "data" / "config.json"
 CONFIG_BACKUP = Path(__file__).parent / ".config_backup.json"
+COOKIES_FILE = ROOT / "server" / "data" / "cookies.txt"
+COOKIES_BACKUP = Path(__file__).parent / ".cookies_backup.txt"
 
 DEMO_USERS = {
     "groups": ["默认", "friends"],
@@ -34,6 +36,8 @@ DEMO_USERS = {
         }
     ],
 }
+
+DEMO_COOKIES = "# Netscape HTTP Cookie File\n"
 
 
 def use_demo_users() -> None:
@@ -50,8 +54,20 @@ def restore_users() -> None:
         USERS_BACKUP.unlink()
 
 
+def use_demo_cookies() -> None:
+    if COOKIES_FILE.exists():
+        shutil.copy(COOKIES_FILE, COOKIES_BACKUP)
+    COOKIES_FILE.write_text(DEMO_COOKIES, encoding="utf-8")
+
+
+def restore_cookies() -> None:
+    if COOKIES_BACKUP.exists():
+        shutil.copy(COOKIES_BACKUP, COOKIES_FILE)
+        COOKIES_BACKUP.unlink()
+
+
 def force_manual_cookies() -> None:
-    """截图时强制 cookies_source=manual，避免 home 截图触发 BrowserCookieGate。"""
+    """截图时强制 cookies_source=manual + parallel_enabled=False（默认状态）。"""
     if CONFIG_FILE.exists():
         shutil.copy(CONFIG_FILE, CONFIG_BACKUP)
         cfg = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
@@ -78,6 +94,7 @@ def shoot(locale: str) -> None:
         )
     except Exception:
         pass
+
 
     with sync_playwright() as p:
         b = p.chromium.launch(headless=True)
@@ -111,14 +128,10 @@ def shoot(locale: str) -> None:
         except Exception:
             pass
 
-        # 3) settings 抽屉 — 切到「从浏览器读取」+ 启用并发，展示新功能
+        # 3) settings 抽屉 — 启用并发演示
         settings_label = "设置" if locale == "zh" else "Settings"
         page.locator(f"button:has-text('{settings_label}')").click()
         page.wait_for_timeout(500)
-
-        browser_label = "从浏览器读取" if locale == "zh" else "Read from browser"
-        page.locator(f"button:has-text('{browser_label}')").click()
-        page.wait_for_timeout(200)
 
         enable_label = "启用实验性并发" if locale == "zh" else "Enable experimental parallelism"
         page.locator(f"label:has-text('{enable_label}') input").click()
@@ -135,14 +148,16 @@ def shoot(locale: str) -> None:
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     use_demo_users()
+    use_demo_cookies()
     force_manual_cookies()
     try:
         for loc in ("zh", "en"):
             shoot(loc)
     finally:
         restore_users()
+        restore_cookies()
         restore_config()
-        print("  ✓ 已恢复 users.json / config.json")
+        print("  ✓ 已恢复 users.json / cookies.txt / config.json")
     return 0
 
 
