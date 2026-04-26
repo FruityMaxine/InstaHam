@@ -4,5 +4,12 @@
   "concurrency": 2,
   "include": ["posts", "stories", "highlights", "reels", "tagged"],
   "videos_mode": "true",
-  "ffmpeg_location": "C:\\ffmpeg\\bin\\ffmpeg.exe"
+  "ffmpeg_location": "C:\\ffmpeg\\bin\\ffmpeg.exe",
+  "cookies_source": "manual",
+  "cookies_browser": "edge",
+  "parallel_enabled": false,
+  "parallel_workers": 2,
+  "parallel_sleep_seconds": 2.0,
+  "parallel_jitter": true,
+  "parallel_circuit_breaker": true
 }

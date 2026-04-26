@@ -20,6 +20,13 @@ export type Config = {
   videos_mode: string;
   ffmpeg_location: string;
   cookies?: string;
+  cookies_source: 'manual' | 'browser';
+  cookies_browser: string; // edge | chrome | firefox | brave | vivaldi | opera | chromium
+  parallel_enabled: boolean;
+  parallel_workers: number;
+  parallel_sleep_seconds: number;
+  parallel_jitter: boolean;
+  parallel_circuit_breaker: boolean;
 };
 
 async function j<T>(r: Response): Promise<T> {
@@ -97,6 +104,7 @@ export type WsEvent =
   | { type: 'warning'; text: string; user?: string }
   | { type: 'error'; text: string; user?: string }
   | { type: 'done'; text: string; code: number; user?: string }
+  | { type: 'circuit_breaker'; text: string; killed: number }
   | { type: 'all_done'; text: string };
 
 export type DownloadRequest = {

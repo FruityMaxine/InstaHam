@@ -1,9 +1,21 @@
 import { useEffect, useState } from 'react';
-import { X, Save, FlaskConical, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  X, Save, FlaskConical, Loader2, CheckCircle2, AlertCircle, Zap,
+} from 'lucide-react';
 import { useStore } from '../lib/store';
 import { api, type Config } from '../lib/api';
 import { useT } from '../lib/i18n';
 import { cn } from '../lib/cn';
+
+const BROWSERS = [
+  { id: 'edge', label: 'Microsoft Edge' },
+  { id: 'chrome', label: 'Google Chrome' },
+  { id: 'firefox', label: 'Firefox' },
+  { id: 'brave', label: 'Brave' },
+  { id: 'vivaldi', label: 'Vivaldi' },
+  { id: 'opera', label: 'Opera' },
+  { id: 'chromium', label: 'Chromium' },
+];
 
 export function ConfigDrawer() {
   const open = useStore((s) => s.drawerOpen);
@@ -36,12 +48,16 @@ export function ConfigDrawer() {
         videos_mode: cfg.videos_mode,
         ffmpeg_location: cfg.ffmpeg_location,
         include: cfg.include,
+        cookies_source: cfg.cookies_source,
+        cookies_browser: cfg.cookies_browser,
+        parallel_enabled: cfg.parallel_enabled,
+        parallel_workers: cfg.parallel_workers,
+        parallel_sleep_seconds: cfg.parallel_sleep_seconds,
+        parallel_jitter: cfg.parallel_jitter,
+        parallel_circuit_breaker: cfg.parallel_circuit_breaker,
       });
       const r = await api.saveCookies(cookies);
-      setSaveResult({
-        ok: true,
-        msg: t('cfg.saveOk', { bytes: r.bytes }),
-      });
+      setSaveResult({ ok: true, msg: t('cfg.saveOk', { bytes: r.bytes }) });
       setTimeout(() => setSaveResult((cur) => (cur && cur.ok ? null : cur)), 3000);
     } catch (e) {
       setSaveResult({ ok: false, msg: t('cfg.saveFail', { msg: (e as Error).message }) });
@@ -57,7 +73,9 @@ export function ConfigDrawer() {
       const r = await api.testCookies('instagram');
       setTestResult({
         ok: r.ok,
-        msg: r.ok ? `OK · ${r.stdout.trim().slice(0, 80)}` : (r.stderr || `exit ${r.code}`).slice(0, 200),
+        msg: r.ok
+          ? `OK · ${r.stdout.trim().slice(0, 80)}`
+          : (r.stderr || `exit ${r.code}`).slice(0, 200),
       });
     } catch (e) {
       setTestResult({ ok: false, msg: (e as Error).message });
@@ -77,7 +95,7 @@ export function ConfigDrawer() {
       />
       <aside
         className={cn(
-          'fixed right-0 top-0 z-50 h-full w-[480px] max-w-[92vw] panel rounded-none border-l border-zinc-800',
+          'fixed right-0 top-0 z-50 h-full w-[520px] max-w-[92vw] panel rounded-none border-l border-zinc-800',
           'transition-transform duration-300 ease-out flex flex-col',
           open ? 'translate-x-0' : 'translate-x-full',
         )}
@@ -101,15 +119,48 @@ export function ConfigDrawer() {
             </div>
           ) : (
             <>
-              <Field label={t('cfg.cookies')}>
-                <textarea
-                  value={cookies}
-                  onChange={(e) => setCookies(e.target.value)}
-                  rows={10}
-                  className="input min-h-[180px] font-mono text-[11px] leading-snug"
-                  placeholder={t('cfg.cookiesPlaceholder')}
-                />
-                <div className="text-[11px] text-zinc-500 mt-1">{t('cfg.cookiesHint')}</div>
+              {/* Cookies 来源切换 */}
+              <Field label={t('cfg.cookieSource')}>
+                <div className="flex gap-1 p-0.5 rounded-md border border-zinc-800 bg-zinc-900/40 mb-2">
+                  <SrcBtn
+                    active={cfg.cookies_source === 'manual'}
+                    onClick={() => setCfg({ ...cfg, cookies_source: 'manual' })}
+                  >
+                    {t('cfg.cookieSrcManual')}
+                  </SrcBtn>
+                  <SrcBtn
+                    active={cfg.cookies_source === 'browser'}
+                    onClick={() => setCfg({ ...cfg, cookies_source: 'browser' })}
+                  >
+                    {t('cfg.cookieSrcBrowser')}
+                  </SrcBtn>
+                </div>
+
+                {cfg.cookies_source === 'manual' ? (
+                  <>
+                    <textarea
+                      value={cookies}
+                      onChange={(e) => setCookies(e.target.value)}
+                      rows={8}
+                      className="input min-h-[160px] font-mono text-[11px] leading-snug"
+                      placeholder={t('cfg.cookiesPlaceholder')}
+                    />
+                    <div className="text-[11px] text-zinc-500 mt-1">{t('cfg.cookiesHint')}</div>
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <select
+                      className="input"
+                      value={cfg.cookies_browser}
+                      onChange={(e) => setCfg({ ...cfg, cookies_browser: e.target.value })}
+                    >
+                      {BROWSERS.map((b) => (
+                        <option key={b.id} value={b.id}>{b.label}</option>
+                      ))}
+                    </select>
+                    <div className="text-[11px] text-zinc-500 leading-relaxed">{t('cfg.browserHint')}</div>
+                  </div>
+                )}
               </Field>
 
               <Field label={t('cfg.dir')}>
@@ -180,12 +231,102 @@ export function ConfigDrawer() {
                   })}
                 </div>
               </Field>
+
+              {/* 并发下载（实验性，折叠） */}
+              <Field label={<span className="flex items-center gap-1.5"><Zap className="h-3 w-3 text-amber-400" />{t('cfg.parallel')}</span>}>
+                <label className="flex items-center gap-2 cursor-pointer text-[13px] text-zinc-200">
+                  <input
+                    type="checkbox"
+                    className="accent-accent h-3.5 w-3.5"
+                    checked={cfg.parallel_enabled}
+                    onChange={(e) => setCfg({ ...cfg, parallel_enabled: e.target.checked })}
+                  />
+                  <span>{t('cfg.parallelEnable')}</span>
+                </label>
+
+                {cfg.parallel_enabled && (
+                  <div className="ml-5 mt-3 space-y-3 border-l-2 border-amber-500/30 pl-4 animate-fade-in">
+                    <div>
+                      <div className="label mb-1.5">{t('cfg.parallelWorkers')}</div>
+                      <div className="flex gap-1 p-0.5 rounded-md border border-zinc-800 bg-zinc-900/40 w-fit">
+                        {[1, 2, 3, 4].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() =>
+                              setCfg({
+                                ...cfg,
+                                parallel_workers: n,
+                                // 联动：sleep 默认 = workers × 1.0
+                                parallel_sleep_seconds: Math.max(cfg.parallel_sleep_seconds, n * 1.0),
+                              })
+                            }
+                            className={cn(
+                              'w-9 h-7 text-[12px] font-mono rounded transition-colors',
+                              cfg.parallel_workers === n
+                                ? 'bg-accent/20 text-accent'
+                                : 'text-zinc-500 hover:text-zinc-200',
+                            )}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="label mb-1.5">{t('cfg.parallelSleep')}</div>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        max="20"
+                        className="input font-mono w-32"
+                        value={cfg.parallel_sleep_seconds}
+                        onChange={(e) =>
+                          setCfg({ ...cfg, parallel_sleep_seconds: Number(e.target.value) })
+                        }
+                      />
+                    </div>
+
+                    <label className="flex items-center gap-2 cursor-pointer text-[12px] text-zinc-300">
+                      <input
+                        type="checkbox"
+                        className="accent-accent h-3.5 w-3.5"
+                        checked={cfg.parallel_jitter}
+                        onChange={(e) => setCfg({ ...cfg, parallel_jitter: e.target.checked })}
+                      />
+                      <span>{t('cfg.parallelJitter')}</span>
+                    </label>
+
+                    <div>
+                      <label className="flex items-center gap-2 cursor-pointer text-[12px] text-zinc-300">
+                        <input
+                          type="checkbox"
+                          className="accent-accent h-3.5 w-3.5"
+                          checked={cfg.parallel_circuit_breaker}
+                          onChange={(e) =>
+                            setCfg({ ...cfg, parallel_circuit_breaker: e.target.checked })
+                          }
+                        />
+                        <span>{t('cfg.parallelBreaker')}</span>
+                      </label>
+                      <div className="ml-5 mt-1 text-[11px] text-zinc-600 leading-relaxed">
+                        {t('cfg.parallelBreakerHint')}
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] text-amber-500/90 leading-relaxed bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1.5">
+                      {t('cfg.parallelWarn')}
+                    </div>
+                  </div>
+                )}
+              </Field>
             </>
           )}
         </div>
 
         <div className="border-t border-zinc-800/80">
-          {/* 反馈条：保存优先，其次 cookies 测试 */}
           {(saveResult || testResult) && (
             <div
               className={cn(
@@ -229,7 +370,38 @@ export function ConfigDrawer() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function SrcBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex-1 px-3 h-7 rounded text-[12px] transition-colors',
+        active
+          ? 'bg-accent/15 text-accent'
+          : 'text-zinc-500 hover:text-zinc-200',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <div className="label mb-1.5">{label}</div>

@@ -39,18 +39,23 @@ Built on top of [`gallery-dl`](https://codeberg.org/mikf/gallery-dl), wrapped in
 
 <sub><em>Active download — dual progress bars, streaming log, indeterminate sweep across 0–100%.</em></sub>
 
+<img src="docs/screenshots/en/04-settings.png" alt="Settings drawer with parallel + browser-cookies" width="900"/>
+
+<sub><em>Settings — read cookies straight from your browser (no manual export), opt-in experimental parallel downloads with circuit breaker.</em></sub>
+
 </div>
 
 ## 🌟 Features
 
-- **Real‑time WebSocket log** — every line `gallery-dl` emits arrives in the UI as it happens (no polling, no buffer lag).
+- **Real-time WebSocket log** — every line `gallery-dl` emits arrives in the UI as it happens (no polling, no buffer lag).
 - **Dual progress bars** — overall (`N / M` users) + current target (file count + skip count).
-- **Four download modes** — All, By group, Selected (checkbox bulk), Ad‑hoc (paste any IG URL — no commit to user list).
-- **Group management** — collapsible left pane, tag filtering, search, inline edit/add/delete, last‑download timestamp per user.
-- **Cookie drawer** — paste Netscape‑format cookies, test against a public account before committing.
+- **Four download modes** — All, By group, Selected (checkbox bulk), Ad-hoc (paste any IG URL — no commit to user list).
+- **Group management** — collapsible left pane, search, inline add/delete, last-download timestamp per user.
+- **Cookies, two ways** — paste a Netscape `cookies.txt`, **or** read straight from your browser (Edge / Chrome / Firefox / Brave / Vivaldi / Opera / Chromium). Browser mode auto-renews via your normal IG session — never expires.
+- **Experimental parallel downloads** *(opt-in)* — 1–4 worker threads with auto sleep, jitter, and circuit breaker that kills all subprocesses on the first 429 / login required / challenge.
 - **Smart deduplication** — shared `archive.sqlite` across all targets; reruns produce skip lines, not duplicates.
-- **One‑click shutdown** — `⏻ 退出` button kills the backend process from the browser.
-- **One‑file launcher** — `launcher.bat` checks the port, starts `uvicorn` hidden, polls until ready, then opens your default browser.
+- **One-click shutdown** — `⏻ Exit` button kills the backend process from the browser.
+- **One-file launcher** — `launcher.bat` checks the port, starts `uvicorn` hidden, polls until ready, then opens your default browser.
 
 ## 🛠 Tech Stack
 
@@ -113,10 +118,17 @@ The launcher detects whether the server is already running, starts it hidden if 
 | Field | Description | Default |
 |---|---|---|
 | `download_dir` | Root folder for downloaded media | `downloads` |
-| `concurrency` | gallery‑dl concurrency hint | `2` |
-| `videos_mode` | `true` (DASH, needs ffmpeg) · `merged` (pre‑merged) · `false` (skip) | `true` |
+| `concurrency` | gallery-dl concurrency hint | `2` |
+| `videos_mode` | `true` (DASH, needs ffmpeg) · `merged` (pre-merged) · `false` (skip) | `true` |
 | `ffmpeg_location` | Absolute path to `ffmpeg.exe` | `C:\ffmpeg\bin\ffmpeg.exe` |
 | `include` | Subset of `posts / stories / highlights / reels / tagged / avatar` | all five |
+| `cookies_source` | `manual` (paste) · `browser` (live read) | `manual` |
+| `cookies_browser` | Browser to read cookies from when `source=browser` | `edge` |
+| `parallel_enabled` | Opt-in to N concurrent gallery-dl subprocesses | `false` |
+| `parallel_workers` | Number of concurrent workers (1–4) | `2` |
+| `parallel_sleep_seconds` | `extractor.instagram.sleep-request` injected per worker | `2.0` |
+| `parallel_jitter` | Randomize sleep ±30% to avoid request periodicity | `true` |
+| `parallel_circuit_breaker` | Auto-stop all workers on 429 / login required / challenge | `true` |
 
 You can edit these directly in the file or via the in‑app settings drawer.
 

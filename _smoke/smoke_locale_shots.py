@@ -1,7 +1,9 @@
-"""跑双语截图：home + running，分别保存到 docs/screenshots/{zh,en}/
+"""跑双语截图：home + running + settings，分别保存到 docs/screenshots/{zh,en}/
 
-为保护用户隐私：截图前临时把 server/data/users.json 替换成 dummy
-（仅含 1 个 @your_username 占位用户 + 一个示例分组），截图后立即恢复。
+为保护用户隐私：
+- 截图前临时把 server/data/users.json 替换成 dummy（仅含 1 个占位用户）
+- settings 截图时切到「从浏览器读取」模式，避免 cookies textarea 显示真实 cookies
+- 截图后立即恢复
 """
 from __future__ import annotations
 
@@ -15,7 +17,7 @@ OUT = ROOT / "docs" / "screenshots"
 URL = "http://127.0.0.1:8765"
 
 USERS_FILE = ROOT / "server" / "data" / "users.json"
-BACKUP = Path(__file__).parent / ".users_backup.json"
+USERS_BACKUP = Path(__file__).parent / ".users_backup.json"
 
 DEMO_USERS = {
     "groups": ["默认", "friends"],
@@ -33,19 +35,17 @@ DEMO_USERS = {
 
 
 def use_demo_users() -> None:
-    """备份现有 users.json 后写入 dummy。"""
     if USERS_FILE.exists():
-        shutil.copy(USERS_FILE, BACKUP)
+        shutil.copy(USERS_FILE, USERS_BACKUP)
     USERS_FILE.write_text(
         json.dumps(DEMO_USERS, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
 
 def restore_users() -> None:
-    """恢复用户原始 users.json。"""
-    if BACKUP.exists():
-        shutil.copy(BACKUP, USERS_FILE)
-        BACKUP.unlink()
+    if USERS_BACKUP.exists():
+        shutil.copy(USERS_BACKUP, USERS_FILE)
+        USERS_BACKUP.unlink()
 
 
 def shoot(locale: str) -> None:
@@ -83,6 +83,24 @@ def shoot(locale: str) -> None:
             page.wait_for_timeout(500)
         except Exception:
             pass
+
+        # 3) settings 抽屉 — 切到「从浏览器读取」+ 启用并发，展示新功能
+        settings_label = "设置" if locale == "zh" else "Settings"
+        page.locator(f"button:has-text('{settings_label}')").click()
+        page.wait_for_timeout(500)
+
+        browser_label = "从浏览器读取" if locale == "zh" else "Read from browser"
+        page.locator(f"button:has-text('{browser_label}')").click()
+        page.wait_for_timeout(200)
+
+        enable_label = "启用实验性并发" if locale == "zh" else "Enable experimental parallelism"
+        page.locator(f"label:has-text('{enable_label}') input").click()
+        page.wait_for_timeout(300)
+        # 选 3 worker 演示
+        page.locator("button:has-text('3')").last.click()
+        page.wait_for_timeout(200)
+
+        page.screenshot(path=str(out / "04-settings.png"), full_page=True)
         b.close()
     print(f"  ✓ {locale} 截图完成 → {out}")
 
@@ -94,7 +112,6 @@ def main() -> int:
         for loc in ("zh", "en"):
             shoot(loc)
     finally:
-        # 不论成功失败，必须恢复用户的真实数据
         restore_users()
         print("  ✓ 已恢复 users.json")
     return 0

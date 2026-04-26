@@ -53,29 +53,55 @@ class GalleryDLRunner:
         self.ffmpeg_location = ffmpeg_location
         if not self.bin_path.exists():
             raise FileNotFoundError(f"gallery-dl 不存在: {bin_path}")
+        # 当前 active subprocess 列表，用于熔断时统一终止
+        self._active: set[subprocess.Popen] = set()
+        self._active_lock = threading.Lock()
 
     # ------------------ 命令构造 ------------------
 
     def build_args(
         self,
         urls: list[str],
-        cookies_path: Path,
         archive_path: Path,
         download_dir: Path,
         include: list[str],
         videos_mode: str = "true",
+        cookies_source: str = "manual",
+        cookies_path: Optional[Path] = None,
+        cookies_browser: str = "edge",
+        sleep_seconds: float = 0.0,
+        jitter: bool = False,
     ) -> list[str]:
         args: list[str] = [str(self.bin_path)]
         args += ["-d", str(download_dir)]
-        args += ["--cookies", str(cookies_path)]
+
+        # cookies 来源：手动文件 / 浏览器自动读取
+        if cookies_source == "browser":
+            args += ["--cookies-from-browser", cookies_browser]
+        else:
+            if cookies_path is not None:
+                args += ["--cookies", str(cookies_path)]
+
         args += ["--download-archive", str(archive_path)]
+
         if include:
             args += ["-o", f"extractor.instagram.include={','.join(include)}"]
-        # videos_mode: "true" / "merged" / "false"
+
         args += ["-o", f"extractor.instagram.videos={videos_mode}"]
+
         if self.ffmpeg_location:
             args += ["-o", f"ffmpeg-location={self.ffmpeg_location}"]
-        # 输出尽量原样（不要 quiet，否则没日志）
+
+        # sleep / jitter（gallery-dl 接受 "1.5" 固定值或 "1.0-3.0" 范围随机）
+        if sleep_seconds > 0:
+            if jitter:
+                lo = round(sleep_seconds * 0.7, 2)
+                hi = round(sleep_seconds * 1.3, 2)
+                sleep_val = f"{lo}-{hi}"
+            else:
+                sleep_val = str(sleep_seconds)
+            args += ["-o", f"extractor.instagram.sleep-request={sleep_val}"]
+
         args += urls
         return args
 
@@ -84,14 +110,29 @@ class GalleryDLRunner:
     def iter_run(
         self,
         urls: list[str],
-        cookies_path: Path,
         archive_path: Path,
         download_dir: Path,
         include: list[str],
         videos_mode: str = "true",
         user_label: Optional[str] = None,
+        cookies_source: str = "manual",
+        cookies_path: Optional[Path] = None,
+        cookies_browser: str = "edge",
+        sleep_seconds: float = 0.0,
+        jitter: bool = False,
     ) -> Iterator[Event]:
-        args = self.build_args(urls, cookies_path, archive_path, download_dir, include, videos_mode)
+        args = self.build_args(
+            urls=urls,
+            archive_path=archive_path,
+            download_dir=download_dir,
+            include=include,
+            videos_mode=videos_mode,
+            cookies_source=cookies_source,
+            cookies_path=cookies_path,
+            cookies_browser=cookies_browser,
+            sleep_seconds=sleep_seconds,
+            jitter=jitter,
+        )
         yield Event(type="started", text=" ".join(args), user=user_label)
 
         proc = subprocess.Popen(
@@ -103,14 +144,21 @@ class GalleryDLRunner:
             errors="replace",
             bufsize=1,
         )
-        q: "Queue[tuple[str, Optional[str]]]" = Queue()
-        threading.Thread(target=_pump, args=(proc.stdout, q, "out"), daemon=True).start()
-        threading.Thread(target=_pump, args=(proc.stderr, q, "err"), daemon=True).start()
+        with self._active_lock:
+            self._active.add(proc)
 
-        yield from self._consume_queue(q, proc, user_label)
+        try:
+            q: "Queue[tuple[str, Optional[str]]]" = Queue()
+            threading.Thread(target=_pump, args=(proc.stdout, q, "out"), daemon=True).start()
+            threading.Thread(target=_pump, args=(proc.stderr, q, "err"), daemon=True).start()
 
-        code = proc.wait()
-        yield Event(type="done", text=f"exit {code}", code=code, user=user_label)
+            yield from self._consume_queue(q, proc, user_label)
+
+            code = proc.wait()
+            yield Event(type="done", text=f"exit {code}", code=code, user=user_label)
+        finally:
+            with self._active_lock:
+                self._active.discard(proc)
 
     def _consume_queue(
         self,
@@ -137,8 +185,31 @@ class GalleryDLRunner:
                 user=user_label,
             )
 
+    def terminate_all(self) -> int:
+        """熔断时统一终止所有正在跑的子进程，返回杀掉的数量。"""
+        with self._active_lock:
+            procs = list(self._active)
+        n = 0
+        for p in procs:
+            try:
+                if p.poll() is None:
+                    p.terminate()
+                    n += 1
+            except Exception:
+                pass
+        return n
+
 
 def build_user_url(username: str) -> str:
     """用户名 -> 主页 URL。include 配置决定拉哪些子类。"""
     username = username.strip().lstrip("@")
     return f"https://www.instagram.com/{username}/"
+
+
+# 熔断关键词：日志中出现这些字样即触发停机
+CIRCUIT_KEYWORDS = ("429", "login required", "challenge", "checkpoint", "rate limit")
+
+
+def is_circuit_breaker_trigger(text: str) -> bool:
+    low = text.lower()
+    return any(k in low for k in CIRCUIT_KEYWORDS)

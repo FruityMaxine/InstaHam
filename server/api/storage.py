@@ -43,8 +43,29 @@ def save_users(data: dict) -> None:
     write_json(USERS_FILE, data)
 
 
+_CONFIG_DEFAULTS = {
+    "cookies_path": "server/data/cookies.txt",
+    "download_dir": "downloads",
+    "concurrency": 2,
+    "include": ["posts", "stories", "highlights", "reels", "tagged"],
+    "videos_mode": "true",
+    "ffmpeg_location": "C:\\ffmpeg\\bin\\ffmpeg.exe",
+    "cookies_source": "manual",
+    "cookies_browser": "edge",
+    "parallel_enabled": False,
+    "parallel_workers": 2,
+    "parallel_sleep_seconds": 2.0,
+    "parallel_jitter": True,
+    "parallel_circuit_breaker": True,
+}
+
+
 def load_config() -> dict:
-    return read_json(CONFIG_FILE)
+    """读 config.json 并把缺失字段补上默认值（旧配置兼容）。"""
+    cfg = read_json(CONFIG_FILE)
+    for k, v in _CONFIG_DEFAULTS.items():
+        cfg.setdefault(k, v)
+    return cfg
 
 
 def save_config(data: dict) -> None:
