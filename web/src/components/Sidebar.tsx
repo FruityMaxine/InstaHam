@@ -20,14 +20,16 @@ export function Sidebar() {
   const locale = useStore((s) => s.locale);
   const t = useT();
 
-  const [adding, setAdding] = useState(false);
-  const [draftName, setDraftName] = useState('');
-  const [draftGroup, setDraftGroup] = useState(groups[0] ?? '默认');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   // 新建分组 inline 输入态
   const [addingGroup, setAddingGroup] = useState(false);
   const [draftGroupName, setDraftGroupName] = useState('');
+
+  // 添加目标分组：选中具体分组 -> 该分组；选中 All / 默认 -> 默认
+  const targetGroup = activeGroup === 'all' ? '默认' : activeGroup;
+  const cleanedSearch = search.trim().replace(/^@+/, '');
+  const canAdd = cleanedSearch.length > 0;
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -46,12 +48,11 @@ export function Sidebar() {
   const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedUserIds.has(id));
 
   async function handleAdd() {
-    if (!draftName.trim()) return;
+    if (!canAdd) return;
     try {
-      const u = await api.addUser({ username: draftName.trim(), group: draftGroup });
+      const u = await api.addUser({ username: cleanedSearch, group: targetGroup });
       setUsers([...users, u]);
-      setDraftName('');
-      setAdding(false);
+      setSearch(''); // 加完清空，避免误重复
     } catch (e) {
       alert(t('sidebar.addFail', { msg: (e as Error).message }));
     }
@@ -78,7 +79,6 @@ export function Sidebar() {
     if (!confirm(t('group.deleteConfirm', { name: displayGroupName(name, locale) }))) return;
     try {
       await api.deleteGroup(name);
-      // 后端会把该分组用户回退到默认 → 重新拉一遍最新状态
       const fresh = await api.listUsers();
       setUsers(fresh.users, fresh.groups);
       if (activeGroup === name) setActiveGroup('all');
@@ -86,6 +86,11 @@ export function Sidebar() {
       alert(t('group.deleteFail', { msg: (err as Error).message }));
     }
   }
+
+  // Add 按钮 tooltip：根据是否能添加给出不同提示
+  const addTitle = canAdd
+    ? t('sidebar.addTo', { name: cleanedSearch, group: displayGroupName(targetGroup, locale) })
+    : t('sidebar.addEmpty');
 
   return (
     <aside className="panel flex flex-col min-h-0">
@@ -95,8 +100,10 @@ export function Sidebar() {
           <span className="chip font-mono">{users.length}</span>
         </div>
         <button
-          className="btn-ghost h-7 px-2 text-[12px]"
-          onClick={() => setAdding((v) => !v)}
+          className="btn-ghost h-7 px-2 text-[12px] disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={handleAdd}
+          disabled={!canAdd}
+          title={addTitle}
           aria-label="add"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -110,13 +117,17 @@ export function Sidebar() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && canAdd) handleAdd();
+            }}
             placeholder={t('sidebar.search')}
-            className="input pl-8 font-mono text-[13px]"
+            className="input pl-8 pr-8 font-mono text-[13px]"
           />
           {search && (
             <button
               className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200"
               onClick={() => setSearch('')}
+              aria-label="clear"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -168,35 +179,6 @@ export function Sidebar() {
           )}
         </div>
       </div>
-
-      {adding && (
-        <div className="border-b border-zinc-800/60 p-3 space-y-2 animate-fade-in">
-          <input
-            autoFocus
-            className="input font-mono"
-            placeholder={t('sidebar.addPlaceholder')}
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-          />
-          <div className="flex gap-2">
-            <select
-              className="input flex-1"
-              value={draftGroup}
-              onChange={(e) => setDraftGroup(e.target.value)}
-            >
-              {groups.map((g) => (
-                <option key={g} value={g}>
-                  {displayGroupName(g, locale)}
-                </option>
-              ))}
-            </select>
-            <button className="btn-primary" onClick={handleAdd}>
-              {t('sidebar.confirm')}
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-800/60 text-[11px]">
         <label className="flex items-center gap-2 cursor-pointer text-zinc-400 hover:text-zinc-200">
