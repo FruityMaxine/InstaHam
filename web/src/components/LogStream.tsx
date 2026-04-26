@@ -78,6 +78,21 @@ export function LogStream() {
             <div key={l.id} className={cn('whitespace-pre-wrap break-all', TYPE_STYLES[l.type] ?? '')}>
               <span className="text-zinc-700 select-none mr-2">{tag(l.type)}</span>
               {l.user && <span className="text-accent/80 mr-1">@{l.user}</span>}
+              {l.type === 'skip' && l.reason && (
+                <span
+                  className={cn(
+                    'inline-block mr-2 px-1.5 py-0 rounded text-[10px] font-mono uppercase tracking-wide align-middle',
+                    l.reason === 'archive'
+                      ? 'bg-sky-500/15 text-sky-400 ring-1 ring-sky-500/30'
+                      : l.reason === 'disk'
+                      ? 'bg-zinc-700/40 text-zinc-400 ring-1 ring-zinc-600/40'
+                      : 'bg-zinc-800 text-zinc-500',
+                  )}
+                  title={t(`skip.${l.reason}`)}
+                >
+                  {l.reason}
+                </span>
+              )}
               <span>{l.text || (l.type === 'log' ? '' : `(${l.type})`)}</span>
             </div>
           ))

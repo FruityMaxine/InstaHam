@@ -133,6 +133,9 @@ const zh: Dict = {
   'arch.empty': '暂无下载条目',
   'arch.refresh': '刷新',
   'topbar.archive': '档案',
+  'skip.archive': 'archive 命中',
+  'skip.disk': '磁盘已存在',
+  'skip.unknown': '未知',
 
   // BrowserCookieGate
   'gate.title.notLogged': '尚未登录',
@@ -276,6 +279,9 @@ const en: Dict = {
   'arch.empty': 'No download entries yet',
   'arch.refresh': 'Refresh',
   'topbar.archive': 'Archive',
+  'skip.archive': 'archive hit',
+  'skip.disk': 'file exists',
+  'skip.unknown': 'unknown',
 
   // BrowserCookieGate
   'gate.title.notLogged': 'Not logged in yet',

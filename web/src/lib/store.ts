@@ -10,6 +10,7 @@ export type LogLine = {
   text: string;
   user?: string;
   ts: number;
+  reason?: 'archive' | 'disk' | 'unknown';
 };
 
 type State = {
@@ -205,6 +206,7 @@ export const useStore = create<State>((set, get) => ({
       text,
       user: 'user' in e ? e.user : undefined,
       ts: Date.now(),
+      reason: e.type === 'skip' ? (e as { reason?: 'archive' | 'disk' | 'unknown' }).reason : undefined,
     };
     const logs = s.logs.length >= MAX_LOG ? s.logs.slice(-MAX_LOG + 1) : s.logs;
     set({ logs: [...logs, line] });

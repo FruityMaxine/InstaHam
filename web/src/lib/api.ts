@@ -124,7 +124,7 @@ export type WsEvent =
   | { type: 'started'; text: string; user?: string }
   | { type: 'log'; text: string; user?: string }
   | { type: 'file'; text: string; file_path?: string; user?: string }
-  | { type: 'skip'; text: string; file_path?: string; user?: string }
+  | { type: 'skip'; text: string; file_path?: string; user?: string; reason?: 'archive' | 'disk' | 'unknown' }
   | { type: 'warning'; text: string; user?: string }
   | { type: 'error'; text: string; user?: string }
   | { type: 'done'; text: string; code: number; user?: string }

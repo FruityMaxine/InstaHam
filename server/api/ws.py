@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -56,6 +57,38 @@ def _resolve_targets(req: dict) -> tuple[list[str], list[str]]:
     return [u["username"] for u in all_users], []
 
 
+# ---- skip 原因分类 ----
+# gallery-dl 输出 `# <path>` 时不区分原因，这里在转发前做后处理：
+#   - entry id 在 archive sqlite 里 → reason='archive'（之前下过、已记账）
+#   - 否则 → reason='disk'（archive 没记，但磁盘已有同名文件，gallery-dl 也会 skip）
+
+_ID_RE = re.compile(r"^\d{15,20}$")
+_archive_cache: set[str] = set()
+_archive_cache_lock = threading.Lock()
+
+
+def _refresh_archive_cache() -> None:
+    """每次新下载开始时调一次，把 archive 全量读进内存集合，分类时 O(1) 查询。"""
+    from server.core.archive_sync import get_archive_entries
+    global _archive_cache
+    with _archive_cache_lock:
+        _archive_cache = get_archive_entries(ARCHIVE_FILE)
+
+
+def _classify_skip(file_path: str | None) -> str:
+    """根据 file_path 推断 skip 原因。"""
+    if not file_path:
+        return "unknown"
+    name = Path(file_path).name
+    with _archive_cache_lock:
+        cache = _archive_cache
+    # 一个文件可能含多个 ID（carousel: post_id_child_id），任一命中 archive 即归 archive
+    for part in re.split(r"[._]", name):
+        if _ID_RE.match(part) and f"instagram{part}" in cache:
+            return "archive"
+    return "disk"
+
+
 def _stamp_user_done(username: str) -> None:
     data = load_users()
     now = datetime.utcnow().isoformat(timespec="seconds")
@@ -91,7 +124,11 @@ def _drain_runner(
             jitter=bool(cfg.get("parallel_jitter", True)),
             group_by_type=bool(cfg.get("group_by_type", True)),
         ):
-            q.put(ev.to_dict())
+            ev_dict = ev.to_dict()
+            # skip 行附 reason，前端按颜色/标签区分
+            if ev_dict.get("type") == "skip":
+                ev_dict["reason"] = _classify_skip(ev_dict.get("file_path"))
+            q.put(ev_dict)
         if not is_url:
             _stamp_user_done(target)
     except Exception as e:
@@ -138,6 +175,9 @@ async def download_ws(ws: WebSocket) -> None:
             ev_msg = {"type": "warning", "text": f"[archive] auto-sync failed: {e}"}
             push_recent(ev_msg)
             await ws.send_json(ev_msg)
+
+    # 刷新 archive 内存缓存，供 _classify_skip 使用
+    _refresh_archive_cache()
 
     meta_ev = {"type": "meta", "total": len(targets), "targets": [t[0] for t in targets]}
     push_recent(meta_ev)
