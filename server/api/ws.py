@@ -89,6 +89,7 @@ def _drain_runner(
             if cfg.get("parallel_enabled")
             else 0.0,
             jitter=bool(cfg.get("parallel_jitter", True)),
+            group_by_type=bool(cfg.get("group_by_type", True)),
         ):
             q.put(ev.to_dict())
         if not is_url:

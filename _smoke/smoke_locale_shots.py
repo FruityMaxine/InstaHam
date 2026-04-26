@@ -28,7 +28,7 @@ DEMO_USERS = {
     "users": [
         {
             "id": "demo01",
-            "username": "your_username",
+            "username": "username",
             "group": "默认",
             "note": "",
             "last_download": None,

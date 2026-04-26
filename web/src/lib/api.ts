@@ -19,6 +19,7 @@ export type Config = {
   include: string[];
   videos_mode: string;
   ffmpeg_location: string;
+  group_by_type: boolean;
   cookies?: string;
   cookies_source: 'manual' | 'browser';
   cookies_browser: string; // edge | chrome | firefox | brave | vivaldi | opera | chromium

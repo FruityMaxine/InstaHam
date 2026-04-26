@@ -71,6 +71,7 @@ class GalleryDLRunner:
         cookies_browser: str = "edge",
         sleep_seconds: float = 0.0,
         jitter: bool = False,
+        group_by_type: bool = False,
     ) -> list[str]:
         args: list[str] = [str(self.bin_path)]
         args += ["-d", str(download_dir)]
@@ -86,6 +87,15 @@ class GalleryDLRunner:
 
         if include:
             args += ["-o", f"extractor.instagram.include={','.join(include)}"]
+
+        # 目录分组：按 sub-extractor (post / stories / highlights / reels) 分子目录
+        # 默认 gallery-dl 把所有内容平铺在 instagram/<username>/ 下，开启后会变成
+        # instagram/<username>/posts/、instagram/<username>/stories/ 等
+        if group_by_type:
+            args += [
+                "-o",
+                'extractor.instagram.directory=["instagram", "{username!l}", "{subcategory}"]',
+            ]
 
         args += ["-o", f"extractor.instagram.videos={videos_mode}"]
 
@@ -120,6 +130,7 @@ class GalleryDLRunner:
         cookies_browser: str = "edge",
         sleep_seconds: float = 0.0,
         jitter: bool = False,
+        group_by_type: bool = False,
     ) -> Iterator[Event]:
         args = self.build_args(
             urls=urls,
@@ -132,6 +143,7 @@ class GalleryDLRunner:
             cookies_browser=cookies_browser,
             sleep_seconds=sleep_seconds,
             jitter=jitter,
+            group_by_type=group_by_type,
         )
         yield Event(type="started", text=" ".join(args), user=user_label)
 

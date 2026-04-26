@@ -38,6 +38,7 @@ export function ConfigDrawer() {
         videos_mode: cfg.videos_mode,
         ffmpeg_location: cfg.ffmpeg_location,
         include: cfg.include,
+        group_by_type: cfg.group_by_type,
         // cookies-from-browser 入口已从 UI 移除；强制 manual，保证保存后下载能直接走文件
         cookies_source: 'manual',
         cookies_browser: cfg.cookies_browser,
@@ -190,6 +191,26 @@ export function ConfigDrawer() {
                     );
                   })}
                 </div>
+                <div className="text-[11px] text-amber-400/80 mt-2 leading-relaxed">
+                  {t('cfg.includeHint')}
+                </div>
+              </Field>
+
+              <Field label={t('cfg.groupByType')}>
+                <label className="flex items-start gap-2 cursor-pointer text-[13px] text-zinc-200">
+                  <input
+                    type="checkbox"
+                    className="accent-accent h-3.5 w-3.5 mt-0.5"
+                    checked={cfg.group_by_type}
+                    onChange={(e) => setCfg({ ...cfg, group_by_type: e.target.checked })}
+                  />
+                  <div className="flex-1">
+                    <div className="font-mono text-[12px] text-zinc-300">
+                      instagram/&lt;username&gt;/&#123;posts,stories,reels,highlights&#125;/...
+                    </div>
+                    <div className="text-[11px] text-zinc-500 mt-1">{t('cfg.groupByTypeHint')}</div>
+                  </div>
+                </label>
               </Field>
 
               {/* 并发下载（实验性，折叠） */}

@@ -109,6 +109,9 @@ const zh: Dict = {
   'cfg.parallelBreaker': '风险熔断',
   'cfg.parallelBreakerHint': '检测到 429 / login required / challenge 任一 worker 报错时，立即终止所有正在跑的子进程',
   'cfg.parallelWarn': '⚠ 并发可能触发 Instagram 风控（弹验证码 / 临时封号）。建议 sleep ≥ 工作线程数 × 1.0 秒。',
+  'cfg.groupByType': '按类型分目录',
+  'cfg.groupByTypeHint': '开启后下载到 instagram/<用户名>/posts/、stories/、reels/... 子目录，便于按类型查看；关闭则全部平铺在 instagram/<用户名>/ 下',
+  'cfg.includeHint': '⚠ tagged 会下载别人 @ 你目标用户的帖子，并按发帖人创建独立用户名文件夹（不在你目标用户的文件夹内）。如只要原创内容，请保持 tagged 关闭。',
 
   // BrowserCookieGate
   'gate.title.notLogged': '尚未登录',
@@ -228,6 +231,9 @@ const en: Dict = {
   'cfg.parallelBreaker': 'Circuit breaker',
   'cfg.parallelBreakerHint': 'When any worker hits 429 / login required / challenge, all running subprocesses are terminated immediately',
   'cfg.parallelWarn': '⚠ Parallelism may trigger Instagram rate-limiting (captcha / temporary suspension). Recommend sleep ≥ workers × 1.0 s.',
+  'cfg.groupByType': 'Group by type',
+  'cfg.groupByTypeHint': 'Save into instagram/<username>/posts/, stories/, reels/... sub-folders so each content type stays separate. Disable to flatten everything under instagram/<username>/.',
+  'cfg.includeHint': '⚠ "tagged" downloads posts where others @ your target user — and saves them into the original poster\'s own folder (NOT inside your target\'s folder). Keep "tagged" off if you only want the target\'s own content.',
 
   // BrowserCookieGate
   'gate.title.notLogged': 'Not logged in yet',
