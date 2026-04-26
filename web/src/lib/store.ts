@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { User, WsEvent } from './api';
+import { detectInitialLocale, persistLocale, tr, type Locale } from './i18n';
 
 export type Mode = 'all' | 'group' | 'selected' | 'adhoc';
 
@@ -36,6 +37,9 @@ type State = {
   galleryDlVersion: string;
   connected: boolean;
 
+  // i18n
+  locale: Locale;
+
   // actions
   setUsers: (u: User[], g?: string[]) => void;
   toggleSelected: (id: string) => void;
@@ -48,6 +52,7 @@ type State = {
   setConnected: (b: boolean) => void;
   setVersion: (v: string) => void;
   setArchiveTotal: (n: number) => void;
+  setLocale: (l: Locale) => void;
   startRun: (ws: WebSocket) => void;
   finishRun: () => void;
   pushEvent: (e: WsEvent) => void;
@@ -81,6 +86,8 @@ export const useStore = create<State>((set, get) => ({
   galleryDlVersion: '',
   connected: false,
 
+  locale: detectInitialLocale(),
+
   setUsers: (u, g) => set({ users: u, groups: g ?? get().groups }),
   toggleSelected: (id) => {
     const next = new Set(get().selectedUserIds);
@@ -102,6 +109,10 @@ export const useStore = create<State>((set, get) => ({
   setConnected: (b) => set({ connected: b }),
   setVersion: (v) => set({ galleryDlVersion: v }),
   setArchiveTotal: (n) => set({ archiveTotal: n }),
+  setLocale: (l) => {
+    persistLocale(l);
+    set({ locale: l });
+  },
 
   startRun: (ws) =>
     set({
@@ -127,7 +138,7 @@ export const useStore = create<State>((set, get) => ({
         const line: LogLine = {
           id: ++logSeq,
           type: 'meta',
-          text: `共 ${e.total} 个目标：${e.targets.join(', ')}`,
+          text: tr(s.locale, 'log.meta', { n: e.total, targets: e.targets.join(', ') }),
           ts: Date.now(),
         };
         set({ logs: [...s.logs, line] });
@@ -154,7 +165,7 @@ export const useStore = create<State>((set, get) => ({
     if (s.logPaused) return;
     let text: string;
     if (e.type === 'user_start') {
-      text = `▸ 第 ${e.index}/${e.total} 个目标：@${e.user}`;
+      text = tr(s.locale, 'log.userStart', { i: e.index, n: e.total, user: e.user });
     } else {
       text = 'text' in e ? e.text : JSON.stringify(e);
     }

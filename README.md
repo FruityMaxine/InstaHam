@@ -31,11 +31,11 @@ Built on top of [`gallery-dl`](https://codeberg.org/mikf/gallery-dl), wrapped in
 
 <div align="center">
 
-<img src="docs/screenshots/01-home.png" alt="Home view" width="900"/>
+<img src="docs/screenshots/en/01-home.png" alt="Home view" width="900"/>
 
 <sub><em>Home — three‑pane operator console (zinc + emerald, Inter + JetBrains Mono).</em></sub>
 
-<img src="docs/screenshots/03-running.png" alt="Active download" width="900"/>
+<img src="docs/screenshots/en/03-running.png" alt="Active download" width="900"/>
 
 <sub><em>Active download — dual progress bars, streaming log, indeterminate sweep across 0–100%.</em></sub>
 

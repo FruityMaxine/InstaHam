@@ -1,4 +1,5 @@
 import { useStore } from '../lib/store';
+import { useT } from '../lib/i18n';
 import { cn } from '../lib/cn';
 
 export function ProgressBars() {
@@ -8,24 +9,20 @@ export function ProgressBars() {
   const files = useStore((s) => s.currentUserFiles);
   const skips = useStore((s) => s.currentUserSkips);
   const running = useStore((s) => s.running);
+  const t = useT();
 
   const totalPct = total > 0 ? Math.min(100, ((idx - 1) / total) * 100) : 0;
-  // 单用户没有总数，用动效（indeterminate）
   return (
     <div className="border-t border-zinc-800/80 px-4 py-3 space-y-3">
       <Bar
-        label="总进度"
-        meta={total > 0 ? `${Math.max(0, idx)} / ${total}` : '空闲'}
+        label={t('progress.total')}
+        meta={total > 0 ? `${Math.max(0, idx)} / ${total}` : t('progress.idle')}
         pct={totalPct}
         running={running}
       />
       <Bar
-        label="当前用户"
-        meta={
-          user
-            ? `@${user}  · ${files} 新文件  · ${skips} 跳过`
-            : '—'
-        }
+        label={t('progress.current')}
+        meta={user ? t('progress.fileSkip', { user, files, skips }) : '—'}
         pct={undefined}
         running={running && !!user}
       />

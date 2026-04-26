@@ -3,6 +3,7 @@ import { Pencil, Trash2, Check, X, Clock } from 'lucide-react';
 import type { User } from '../lib/api';
 import { api } from '../lib/api';
 import { useStore } from '../lib/store';
+import { useT } from '../lib/i18n';
 import { cn } from '../lib/cn';
 
 export function UserRow({ user }: { user: User }) {
@@ -12,6 +13,7 @@ export function UserRow({ user }: { user: User }) {
   const selected = useStore((s) => s.selectedUserIds.has(user.id));
   const toggleSelected = useStore((s) => s.toggleSelected);
   const currentUser = useStore((s) => s.currentUser);
+  const t = useT();
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user.username);
@@ -23,11 +25,11 @@ export function UserRow({ user }: { user: User }) {
       setUsers(users.map((x) => (x.id === u.id ? u : x)));
       setEditing(false);
     } catch (e) {
-      alert(`保存失败：${(e as Error).message}`);
+      alert(t('user.saveFail', { msg: (e as Error).message }));
     }
   }
   async function remove() {
-    if (!confirm(`删除 @${user.username}？`)) return;
+    if (!confirm(t('user.deleteConfirm', { name: user.username }))) return;
     await api.deleteUser(user.id);
     setUsers(users.filter((x) => x.id !== user.id));
   }
@@ -80,7 +82,7 @@ export function UserRow({ user }: { user: User }) {
             </div>
             <div className="flex items-center gap-1.5 text-[10px] text-zinc-600 font-mono">
               <Clock className="h-2.5 w-2.5" />
-              <span>{user.last_download ? user.last_download.replace('T', ' ') : '从未下载'}</span>
+              <span>{user.last_download ? user.last_download.replace('T', ' ') : t('user.never')}</span>
             </div>
           </div>
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">

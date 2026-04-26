@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { X, Save, FlaskConical, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { api, type Config } from '../lib/api';
+import { useT } from '../lib/i18n';
 import { cn } from '../lib/cn';
 
 export function ConfigDrawer() {
@@ -14,6 +15,7 @@ export function ConfigDrawer() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [saveResult, setSaveResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const t = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -38,12 +40,11 @@ export function ConfigDrawer() {
       const r = await api.saveCookies(cookies);
       setSaveResult({
         ok: true,
-        msg: `已保存 · cookies ${r.bytes} 字节 · 配置已更新`,
+        msg: t('cfg.saveOk', { bytes: r.bytes }),
       });
-      // 3 秒后自动消失
       setTimeout(() => setSaveResult((cur) => (cur && cur.ok ? null : cur)), 3000);
     } catch (e) {
-      setSaveResult({ ok: false, msg: `保存失败：${(e as Error).message}` });
+      setSaveResult({ ok: false, msg: t('cfg.saveFail', { msg: (e as Error).message }) });
     } finally {
       setSaving(false);
     }
@@ -83,8 +84,8 @@ export function ConfigDrawer() {
       >
         <div className="panel-h">
           <div>
-            <div className="text-[14px] font-semibold text-zinc-100">设置</div>
-            <div className="text-[11px] text-zinc-500">cookies · 下载目录 · 视频质量</div>
+            <div className="text-[14px] font-semibold text-zinc-100">{t('cfg.title')}</div>
+            <div className="text-[11px] text-zinc-500">{t('cfg.subtitle')}</div>
           </div>
           <button className="btn-ghost h-7 w-7 p-0" onClick={() => setOpen(false)}>
             <X className="h-4 w-4" />
@@ -100,20 +101,18 @@ export function ConfigDrawer() {
             </div>
           ) : (
             <>
-              <Field label="Cookies (Netscape 格式)">
+              <Field label={t('cfg.cookies')}>
                 <textarea
                   value={cookies}
                   onChange={(e) => setCookies(e.target.value)}
                   rows={10}
                   className="input min-h-[180px] font-mono text-[11px] leading-snug"
-                  placeholder="# Netscape HTTP Cookie File&#10;.instagram.com  TRUE  /  TRUE  ...  sessionid  ..."
+                  placeholder={t('cfg.cookiesPlaceholder')}
                 />
-                <div className="text-[11px] text-zinc-500 mt-1">
-                  推荐用 Chrome 扩展「Get cookies.txt LOCALLY」导出。
-                </div>
+                <div className="text-[11px] text-zinc-500 mt-1">{t('cfg.cookiesHint')}</div>
               </Field>
 
-              <Field label="下载目录">
+              <Field label={t('cfg.dir')}>
                 <input
                   className="input font-mono text-[12px]"
                   value={cfg.download_dir}
@@ -122,7 +121,7 @@ export function ConfigDrawer() {
               </Field>
 
               <div className="grid grid-cols-2 gap-3">
-                <Field label="并发数">
+                <Field label={t('cfg.concurrency')}>
                   <input
                     type="number"
                     min={1}
@@ -132,20 +131,20 @@ export function ConfigDrawer() {
                     onChange={(e) => setCfg({ ...cfg, concurrency: Number(e.target.value) })}
                   />
                 </Field>
-                <Field label="视频模式">
+                <Field label={t('cfg.videoMode')}>
                   <select
                     className="input"
                     value={cfg.videos_mode}
                     onChange={(e) => setCfg({ ...cfg, videos_mode: e.target.value })}
                   >
-                    <option value="true">true · DASH 最高质量（需 ffmpeg）</option>
-                    <option value="merged">merged · 预合并（无 ffmpeg）</option>
-                    <option value="false">false · 跳过视频</option>
+                    <option value="true">{t('cfg.videoTrue')}</option>
+                    <option value="merged">{t('cfg.videoMerged')}</option>
+                    <option value="false">{t('cfg.videoFalse')}</option>
                   </select>
                 </Field>
               </div>
 
-              <Field label="ffmpeg 路径">
+              <Field label={t('cfg.ffmpegPath')}>
                 <input
                   className="input font-mono text-[12px]"
                   value={cfg.ffmpeg_location}
@@ -154,7 +153,7 @@ export function ConfigDrawer() {
                 />
               </Field>
 
-              <Field label="抓取项 (instagram.include)">
+              <Field label={t('cfg.include')}>
                 <div className="flex flex-wrap gap-1.5">
                   {['posts', 'stories', 'highlights', 'reels', 'tagged', 'avatar'].map((k) => {
                     const on = cfg.include.includes(k);
@@ -216,12 +215,12 @@ export function ConfigDrawer() {
           <div className="p-3 flex items-center gap-2">
             <button className="btn-outline" disabled={testing} onClick={runTest}>
               {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FlaskConical className="h-3.5 w-3.5" />}
-              <span>测试 cookies</span>
+              <span>{t('cfg.test')}</span>
             </button>
             <div className="flex-1" />
             <button className="btn-primary" onClick={save} disabled={saving}>
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              保存
+              {t('cfg.save')}
             </button>
           </div>
         </div>

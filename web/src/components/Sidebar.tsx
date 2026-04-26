@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ChevronDown, Plus, Search, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { api, type User } from '../lib/api';
+import { useT } from '../lib/i18n';
 import { UserRow } from './UserRow';
 import { cn } from '../lib/cn';
 
@@ -16,6 +17,7 @@ export function Sidebar() {
   const selectedUserIds = useStore((s) => s.selectedUserIds);
   const selectAllVisible = useStore((s) => s.selectAllVisible);
   const clearSelection = useStore((s) => s.clearSelection);
+  const t = useT();
 
   const [adding, setAdding] = useState(false);
   const [draftName, setDraftName] = useState('');
@@ -25,7 +27,8 @@ export function Sidebar() {
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
     const visible = users.filter((u) => {
-      const matchSearch = !q || u.username.toLowerCase().includes(q) || (u.note ?? '').toLowerCase().includes(q);
+      const matchSearch =
+        !q || u.username.toLowerCase().includes(q) || (u.note ?? '').toLowerCase().includes(q);
       const matchGroup = activeGroup === 'all' || u.group === activeGroup;
       return matchSearch && matchGroup;
     });
@@ -45,7 +48,7 @@ export function Sidebar() {
       setDraftName('');
       setAdding(false);
     } catch (e) {
-      alert(`添加失败：${(e as Error).message}`);
+      alert(t('sidebar.addFail', { msg: (e as Error).message }));
     }
   }
 
@@ -53,27 +56,26 @@ export function Sidebar() {
     <aside className="panel flex flex-col min-h-0">
       <div className="panel-h">
         <div className="flex items-center gap-2">
-          <span className="label">用户列表</span>
+          <span className="label">{t('sidebar.title')}</span>
           <span className="chip font-mono">{users.length}</span>
         </div>
         <button
           className="btn-ghost h-7 px-2 text-[12px]"
           onClick={() => setAdding((v) => !v)}
-          aria-label="添加用户"
+          aria-label="add"
         >
           <Plus className="h-3.5 w-3.5" />
-          新增
+          {t('sidebar.add')}
         </button>
       </div>
 
-      {/* 搜索 + 分组 */}
       <div className="px-3 pt-3 pb-2 space-y-2 border-b border-zinc-800/60">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="搜索 用户名 / 备注"
+            placeholder={t('sidebar.search')}
             className="input pl-8 font-mono text-[13px]"
           />
           {search && (
@@ -86,7 +88,12 @@ export function Sidebar() {
           )}
         </div>
         <div className="flex flex-wrap gap-1">
-          <GroupTab label="全部" active={activeGroup === 'all'} onClick={() => setActiveGroup('all')} count={users.length} />
+          <GroupTab
+            label={t('sidebar.all')}
+            active={activeGroup === 'all'}
+            onClick={() => setActiveGroup('all')}
+            count={users.length}
+          />
           {groups.map((g) => (
             <GroupTab
               key={g}
@@ -99,13 +106,12 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* 添加面板 */}
       {adding && (
         <div className="border-b border-zinc-800/60 p-3 space-y-2 animate-fade-in">
           <input
             autoFocus
             className="input font-mono"
-            placeholder="instagram 用户名（不带 @）"
+            placeholder={t('sidebar.addPlaceholder')}
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
@@ -117,15 +123,18 @@ export function Sidebar() {
               onChange={(e) => setDraftGroup(e.target.value)}
             >
               {groups.map((g) => (
-                <option key={g} value={g}>{g}</option>
+                <option key={g} value={g}>
+                  {g}
+                </option>
               ))}
             </select>
-            <button className="btn-primary" onClick={handleAdd}>添加</button>
+            <button className="btn-primary" onClick={handleAdd}>
+              {t('sidebar.confirm')}
+            </button>
           </div>
         </div>
       )}
 
-      {/* 批量勾选 */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-800/60 text-[11px]">
         <label className="flex items-center gap-2 cursor-pointer text-zinc-400 hover:text-zinc-200">
           <input
@@ -134,21 +143,20 @@ export function Sidebar() {
             checked={allSelected}
             onChange={() => selectAllVisible(visibleIds)}
           />
-          <span>勾选当前 ({visibleIds.length})</span>
+          <span>{t('sidebar.selectVisible', { n: visibleIds.length })}</span>
         </label>
         <button
           className="text-zinc-500 hover:text-zinc-200 disabled:opacity-40"
           disabled={selectedUserIds.size === 0}
           onClick={() => clearSelection()}
         >
-          清空选择 ({selectedUserIds.size})
+          {t('sidebar.clearSel', { n: selectedUserIds.size })}
         </button>
       </div>
 
-      {/* 列表 */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         {Object.keys(grouped).length === 0 ? (
-          <Empty />
+          <Empty t={t} />
         ) : (
           Object.entries(grouped).map(([g, list]) => (
             <div key={g} className="border-b border-zinc-900/80 last:border-b-0">
@@ -195,7 +203,9 @@ function GroupTab({
       onClick={onClick}
       className={cn(
         'flex items-center gap-1 rounded-full px-2.5 h-6 text-[11px] transition-colors',
-        active ? 'bg-accent/15 text-accent ring-1 ring-accent/40' : 'bg-zinc-800/60 text-zinc-400 hover:text-zinc-200',
+        active
+          ? 'bg-accent/15 text-accent ring-1 ring-accent/40'
+          : 'bg-zinc-800/60 text-zinc-400 hover:text-zinc-200',
       )}
     >
       <span>{label}</span>
@@ -204,11 +214,11 @@ function GroupTab({
   );
 }
 
-function Empty() {
+function Empty({ t }: { t: (k: string) => string }) {
   return (
     <div className="p-8 text-center text-[12px] text-zinc-600">
-      <p>暂无匹配用户。</p>
-      <p className="mt-1">点右上「新增」添加。</p>
+      <p>{t('sidebar.empty1')}</p>
+      <p className="mt-1">{t('sidebar.empty2')}</p>
     </div>
   );
 }

@@ -31,11 +31,11 @@
 
 <div align="center">
 
-<img src="docs/screenshots/01-home.png" alt="主界面" width="900"/>
+<img src="docs/screenshots/zh/01-home.png" alt="主界面" width="900"/>
 
 <sub><em>主界面 —— 三栏操作员控制台（zinc 暗色 + emerald 单点强调，Inter + JetBrains Mono）。</em></sub>
 
-<img src="docs/screenshots/03-running.png" alt="下载进行中" width="900"/>
+<img src="docs/screenshots/zh/03-running.png" alt="下载进行中" width="900"/>
 
 <sub><em>下载进行中 —— 双层进度条，流式日志，不定进度条横扫 0–100%。</em></sub>
 
