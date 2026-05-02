@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import json
+import uuid
+from datetime import datetime
 from pathlib import Path
 from threading import Lock
 
@@ -59,6 +61,7 @@ _CONFIG_DEFAULTS = {
     "parallel_sleep_seconds": 2.0,
     "parallel_jitter": True,
     "parallel_circuit_breaker": True,
+    "backfill_on_start": False,
 }
 
 
@@ -83,3 +86,39 @@ def read_cookies() -> str:
     if not COOKIES_FILE.exists():
         return ""
     return COOKIES_FILE.read_text(encoding="utf-8")
+
+
+def backfill_users_from_disk() -> list[str]:
+    """扫描下载目录，把磁盘上有文件夹但 users.json 里缺失的用户补进去。
+
+    返回本次新增的用户名列表。
+    """
+    cfg = load_config()
+    dl_dir = ROOT / cfg.get("download_dir", "downloads") / "instagram"
+    if not dl_dir.is_dir():
+        return []
+
+    data = load_users()
+    existing = {u["username"].lower() for u in data["users"]}
+    added: list[str] = []
+
+    for entry in sorted(dl_dir.iterdir()):
+        if not entry.is_dir():
+            continue
+        name = entry.name
+        if name.lower() in existing:
+            continue
+        data["users"].append({
+            "id": uuid.uuid4().hex[:8],
+            "username": name,
+            "group": "默认",
+            "note": "",
+            "last_download": None,
+            "created_at": datetime.utcnow().isoformat(timespec="seconds"),
+        })
+        existing.add(name.lower())
+        added.append(name)
+
+    if added:
+        save_users(data)
+    return added

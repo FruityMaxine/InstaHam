@@ -29,6 +29,7 @@ export type Config = {
   parallel_sleep_seconds: number;
   parallel_jitter: boolean;
   parallel_circuit_breaker: boolean;
+  backfill_on_start: boolean;
 };
 
 async function j<T>(r: Response): Promise<T> {

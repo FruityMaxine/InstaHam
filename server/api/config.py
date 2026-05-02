@@ -41,6 +41,7 @@ class ConfigPatch(BaseModel):
     parallel_sleep_seconds: Optional[float] = None
     parallel_jitter: Optional[bool] = None
     parallel_circuit_breaker: Optional[bool] = None
+    backfill_on_start: Optional[bool] = None
 
 
 class CookiesIn(BaseModel):

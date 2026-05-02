@@ -18,6 +18,7 @@ from server.api import users as api_users
 from server.api import archive as api_archive
 from server.api import ws as api_ws
 from server.api import system as api_system
+from server.api.storage import backfill_users_from_disk
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "server" / "data"
@@ -80,3 +81,10 @@ app.include_router(api_ws.router)  # /ws/download
 # 前端构建产物（Phase 4 之后才有内容；先用 check_dir=False 容错）
 if (WEB_DIR / "index.html").exists():
     app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
+
+# 启动时自动补齐：磁盘上有文件夹但 users.json 里缺失的用户（需在设置中开启）
+from server.api.storage import load_config as _load_cfg
+if _load_cfg().get("backfill_on_start", False):
+    _backfilled = backfill_users_from_disk()
+    if _backfilled:
+        print(f"[backfill] 从磁盘补齐 {len(_backfilled)} 个用户: {', '.join(_backfilled)}")

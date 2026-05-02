@@ -48,6 +48,7 @@ export function ConfigDrawer() {
         parallel_sleep_seconds: cfg.parallel_sleep_seconds,
         parallel_jitter: cfg.parallel_jitter,
         parallel_circuit_breaker: cfg.parallel_circuit_breaker,
+        backfill_on_start: cfg.backfill_on_start,
       });
       const r = await api.saveCookies(cookies);
       setSaveResult({ ok: true, msg: t('cfg.saveOk', { bytes: r.bytes }) });
@@ -223,6 +224,18 @@ export function ConfigDrawer() {
                     onChange={(e) => setCfg({ ...cfg, archive_auto_sync: e.target.checked })}
                   />
                   <div className="flex-1 text-[11px] text-zinc-500 leading-relaxed">{t('cfg.autoSyncHint')}</div>
+                </label>
+              </Field>
+
+              <Field label={t('cfg.backfill')}>
+                <label className="flex items-start gap-2 cursor-pointer text-[13px] text-zinc-200">
+                  <input
+                    type="checkbox"
+                    className="accent-accent h-3.5 w-3.5 mt-0.5"
+                    checked={cfg.backfill_on_start}
+                    onChange={(e) => setCfg({ ...cfg, backfill_on_start: e.target.checked })}
+                  />
+                  <div className="flex-1 text-[11px] text-zinc-500 leading-relaxed">{t('cfg.backfillHint')}</div>
                 </label>
               </Field>
 
