@@ -60,6 +60,7 @@ const zh: Dict = {
   'task.targets': '目标 {n}',
   'task.start': '开始下载',
   'task.stop': '停止',
+  'task.alreadyRunning': '下载正在进行中，请等待完成或点击停止',
 
   // ProgressBars
   'progress.total': '总进度',
@@ -208,6 +209,7 @@ const en: Dict = {
   'task.targets': '{n} targets',
   'task.start': 'Start',
   'task.stop': 'Stop',
+  'task.alreadyRunning': 'A download is already running. Wait or click Stop.',
 
   // ProgressBars
   'progress.total': 'Overall',

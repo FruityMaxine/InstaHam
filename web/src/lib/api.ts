@@ -109,6 +109,16 @@ export const api = {
 
   // system
   shutdown: () => fetch('/api/system/shutdown', { method: 'POST' }).then(j<{ ok: boolean }>),
+  downloadStatus: () =>
+    fetch('/api/system/download-status').then(
+      j<{
+        running: boolean;
+        targets: string[];
+        total: number;
+        current_index: number;
+        current_user: string | null;
+      }>,
+    ),
   browserStatus: (name: string) =>
     fetch(`/api/system/browser-status?name=${encodeURIComponent(name)}`).then(
       j<{ ok: boolean; unknown?: boolean; running: boolean; cookies_exists: boolean }>,
@@ -132,12 +142,9 @@ export type WsEvent =
   | { type: 'circuit_breaker'; text: string; killed: number }
   | { type: 'all_done'; text: string };
 
-export type DownloadRequest = {
-  mode: 'all' | 'group' | 'selected' | 'adhoc';
-  users?: string[];
-  group?: string;
-  urls?: string[];
-};
+export type DownloadRequest =
+  | { mode: 'all' | 'group' | 'selected' | 'adhoc'; users?: string[]; group?: string; urls?: string[] }
+  | { mode: 'subscribe' };
 
 export function openDownloadWs(
   req: DownloadRequest,

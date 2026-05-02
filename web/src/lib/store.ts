@@ -57,6 +57,7 @@ type State = {
   setArchiveTotal: (n: number) => void;
   setLocale: (l: Locale) => void;
   startRun: (ws: WebSocket) => void;
+  reconnectRun: (ws: WebSocket) => void;
   finishRun: () => void;
   pushEvent: (e: WsEvent) => void;
   clearLogs: () => void;
@@ -131,6 +132,7 @@ export const useStore = create<State>((set, get) => ({
       currentUserSkips: 0,
       logs: [],
     }),
+  reconnectRun: (ws) => set({ ws, running: true }),
   finishRun: () => set({ running: false, ws: null }),
   togglePause: () => set({ logPaused: !get().logPaused }),
   clearLogs: () => set({ logs: [] }),

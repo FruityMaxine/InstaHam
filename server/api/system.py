@@ -34,6 +34,19 @@ def recent_events() -> dict:
     return {"events": list(RECENT_EVENTS)}
 
 
+@router.get("/download-status")
+def download_status() -> dict:
+    """前端 mount 时查询是否有下载正在进行，用于断线重连。"""
+    from server.api.ws import _run_state
+    return {
+        "running": _run_state["running"],
+        "targets": _run_state["targets"],
+        "total": _run_state["total"],
+        "current_index": _run_state["current_index"],
+        "current_user": _run_state["current_user"],
+    }
+
+
 @router.post("/recent-events/clear")
 def clear_events() -> dict:
     """清空内存事件缓存。仅供测试/截图脚本使用。"""

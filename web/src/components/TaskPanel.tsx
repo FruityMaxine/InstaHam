@@ -21,6 +21,7 @@ export function TaskPanel() {
   const running = useStore((s) => s.running);
   const ws = useStore((s) => s.ws);
   const startRun = useStore((s) => s.startRun);
+  const reconnectRun = useStore((s) => s.reconnectRun);
   const finishRun = useStore((s) => s.finishRun);
   const pushEvent = useStore((s) => s.pushEvent);
   const locale = useStore((s) => s.locale);
@@ -29,13 +30,38 @@ export function TaskPanel() {
   const [adhocText, setAdhocText] = useState('');
   const [groupChoice, setGroupChoice] = useState(activeGroup !== 'all' ? activeGroup : groups[0] ?? '默认');
 
-  // mount 时拉一次 server 缓存的事件，重连后能看到关浏览器期间的进度
+  // mount 时检查是否有下载正在进行，有则恢复状态并订阅实时事件
   const hydrateLogs = useStore((s) => s.hydrateLogs);
   useEffect(() => {
-    api.recentEvents().then((r) => {
-      if (r.events && r.events.length) hydrateLogs(r.events);
-    }).catch(() => {});
-  }, [hydrateLogs]);
+    let cancelled = false;
+    api.downloadStatus().then((status) => {
+      if (cancelled) return;
+      if (status.running) {
+        api.recentEvents().then((r) => {
+          if (cancelled) return;
+          if (r.events?.length) hydrateLogs(r.events);
+          const sock = openDownloadWs({ mode: 'subscribe' }, pushEvent, finishRun);
+          reconnectRun(sock);
+          useStore.setState({
+            totalUsers: status.total,
+            currentUserIndex: status.current_index,
+            currentUser: status.current_user,
+          });
+        }).catch(() => {});
+      } else {
+        api.recentEvents().then((r) => {
+          if (cancelled) return;
+          if (r.events?.length) hydrateLogs(r.events);
+        }).catch(() => {});
+      }
+    }).catch(() => {
+      api.recentEvents().then((r) => {
+        if (cancelled) return;
+        if (r.events?.length) hydrateLogs(r.events);
+      }).catch(() => {});
+    });
+    return () => { cancelled = true; };
+  }, [hydrateLogs, pushEvent, finishRun, reconnectRun]);
 
   const targetCount =
     mode === 'all'
@@ -58,8 +84,9 @@ export function TaskPanel() {
   }
 
   function stop() {
-    ws?.close();
-    finishRun();
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: 'stop' }));
+    }
   }
 
   return (

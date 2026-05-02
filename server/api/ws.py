@@ -3,6 +3,8 @@
 设计要点：
 - ws 断开后**下载继续后台跑** —— 用户可以关浏览器，过会儿重开看结果
 - 每条 event 同时写入 system.RECENT_EVENTS，前端重连时拉历史回放
+- 支持 subscribe 模式：前端刷新后可重新接入正在运行的下载
+- 同一时刻只允许一个下载任务，防止重复启动
 - 仅熔断 (circuit breaker) 时才主动 abort
 - 并发模式由 cfg.parallel_enabled / parallel_workers 控制（1-4）
 """
@@ -36,6 +38,20 @@ from .system import push_recent, clear_recent
 
 router = APIRouter()
 
+# ---------------------------------------------------------------------------
+# 全局下载状态：单用户桌面应用，同一时刻只有一个下载任务
+# ---------------------------------------------------------------------------
+
+_run_state: dict = {
+    "running": False,
+    "targets": [],
+    "total": 0,
+    "current_index": 0,
+    "current_user": None,
+    "subscribers": [],    # list of (WebSocket, ws_state_dict)
+    "abort_event": None,
+}
+
 
 def _resolve_targets(req: dict) -> tuple[list[str], list[str]]:
     mode = req.get("mode", "all")
@@ -58,9 +74,6 @@ def _resolve_targets(req: dict) -> tuple[list[str], list[str]]:
 
 
 # ---- skip 原因分类 ----
-# gallery-dl 输出 `# <path>` 时不区分原因，这里在转发前做后处理：
-#   - entry id 在 archive sqlite 里 → reason='archive'（之前下过、已记账）
-#   - 否则 → reason='disk'（archive 没记，但磁盘已有同名文件，gallery-dl 也会 skip）
 
 _ID_RE = re.compile(r"^\d{15,20}$")
 _archive_cache: set[str] = set()
@@ -68,7 +81,6 @@ _archive_cache_lock = threading.Lock()
 
 
 def _refresh_archive_cache() -> None:
-    """每次新下载开始时调一次，把 archive 全量读进内存集合，分类时 O(1) 查询。"""
     from server.core.archive_sync import get_archive_entries
     global _archive_cache
     with _archive_cache_lock:
@@ -76,13 +88,11 @@ def _refresh_archive_cache() -> None:
 
 
 def _classify_skip(file_path: str | None) -> str:
-    """根据 file_path 推断 skip 原因。"""
     if not file_path:
         return "unknown"
     name = Path(file_path).name
     with _archive_cache_lock:
         cache = _archive_cache
-    # 一个文件可能含多个 ID（carousel: post_id_child_id），任一命中 archive 即归 archive
     for part in re.split(r"[._]", name):
         if _ID_RE.match(part) and f"instagram{part}" in cache:
             return "archive"
@@ -125,7 +135,6 @@ def _drain_runner(
             group_by_type=bool(cfg.get("group_by_type", True)),
         ):
             ev_dict = ev.to_dict()
-            # skip 行附 reason，前端按颜色/标签区分
             if ev_dict.get("type") == "skip":
                 ev_dict["reason"] = _classify_skip(ev_dict.get("file_path"))
             q.put(ev_dict)
@@ -134,6 +143,115 @@ def _drain_runner(
     except Exception as e:
         q.put({"type": "error", "text": f"runner crash: {e}", "user": target})
 
+
+# ---------------------------------------------------------------------------
+# 广播：推事件给所有订阅者 + 写入历史缓存
+# ---------------------------------------------------------------------------
+
+async def _broadcast(ev: dict) -> None:
+    push_recent(ev)
+    if ev.get("type") == "user_start":
+        _run_state["current_index"] = ev.get("index", 0)
+        _run_state["current_user"] = ev.get("user")
+    dead: list[int] = []
+    for i, (sub_ws, sub_state) in enumerate(_run_state["subscribers"]):
+        if not sub_state["alive"]:
+            dead.append(i)
+            continue
+        try:
+            await sub_ws.send_json(ev)
+        except (WebSocketDisconnect, RuntimeError):
+            sub_state["alive"] = False
+            dead.append(i)
+    for i in reversed(dead):
+        _run_state["subscribers"].pop(i)
+
+
+# ---------------------------------------------------------------------------
+# 订阅者 receive loop：监听 stop 指令或断开
+# ---------------------------------------------------------------------------
+
+async def _subscriber_loop(ws: WebSocket, ws_state: dict) -> None:
+    try:
+        while _run_state["running"] and ws_state["alive"]:
+            try:
+                data = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+                if data.get("action") == "stop" and _run_state["abort_event"]:
+                    _run_state["abort_event"].set()
+            except asyncio.TimeoutError:
+                continue
+    except (WebSocketDisconnect, RuntimeError):
+        ws_state["alive"] = False
+
+
+# ---------------------------------------------------------------------------
+# 下载主逻辑（独立协程，不绑定任何单个 WS 连接）
+# ---------------------------------------------------------------------------
+
+async def _run_download(
+    runner: GalleryDLRunner,
+    cfg: dict,
+    targets: list[tuple[str, bool]],
+    abort_event: asyncio.Event,
+) -> None:
+    try:
+        if cfg.get("archive_auto_sync", True):
+            try:
+                from server.core import archive_sync
+                dl_dir = Path(cfg.get("download_dir", "downloads"))
+                if not dl_dir.is_absolute():
+                    from .storage import ROOT as _ROOT
+                    dl_dir = _ROOT / dl_dir
+                removed = archive_sync.sync_archive_to_disk(ARCHIVE_FILE, dl_dir.resolve())
+                if removed > 0:
+                    await _broadcast({"type": "log", "text": f"[archive] auto-sync: removed {removed} orphan entries (will be re-downloaded)"})
+            except Exception as e:
+                await _broadcast({"type": "warning", "text": f"[archive] auto-sync failed: {e}"})
+
+        _refresh_archive_cache()
+
+        meta_ev = {"type": "meta", "total": len(targets), "targets": [t[0] for t in targets]}
+        await _broadcast(meta_ev)
+
+        parallel = bool(cfg.get("parallel_enabled"))
+        workers = max(1, min(4, int(cfg.get("parallel_workers", 1)))) if parallel else 1
+        breaker_on = bool(cfg.get("parallel_circuit_breaker", True))
+
+        if workers <= 1:
+            for idx, (target, is_url) in enumerate(targets, 1):
+                if abort_event.is_set():
+                    break
+                await _run_one(runner, cfg, target, is_url, idx, len(targets), abort_event, breaker_on)
+        else:
+            sem = asyncio.Semaphore(workers)
+
+            async def _wrapped(idx: int, target: str, is_url: bool) -> None:
+                async with sem:
+                    if abort_event.is_set():
+                        return
+                    await _run_one(runner, cfg, target, is_url, idx, len(targets), abort_event, breaker_on)
+
+            await asyncio.gather(
+                *[_wrapped(i, t, u) for i, (t, u) in enumerate(targets, 1)],
+                return_exceptions=True,
+            )
+
+        await _broadcast({"type": "all_done", "text": "aborted" if abort_event.is_set() else "ok"})
+    finally:
+        _run_state.update({
+            "running": False,
+            "targets": [],
+            "total": 0,
+            "current_index": 0,
+            "current_user": None,
+            "subscribers": [],
+            "abort_event": None,
+        })
+
+
+# ---------------------------------------------------------------------------
+# WebSocket 端点
+# ---------------------------------------------------------------------------
 
 @router.websocket("/ws/download")
 async def download_ws(ws: WebSocket) -> None:
@@ -144,8 +262,23 @@ async def download_ws(ws: WebSocket) -> None:
         await ws.close(code=1003)
         return
 
-    cfg = load_config()
-    runner = GalleryDLRunner(BIN_PATH, ffmpeg_location=cfg.get("ffmpeg_location"))
+    ws_state = {"alive": True}
+
+    # ---- subscribe 模式：挂载到正在运行的下载 ----
+    if req.get("mode") == "subscribe":
+        if not _run_state["running"]:
+            await ws.send_json({"type": "all_done", "text": "not_running"})
+            return
+        _run_state["subscribers"].append((ws, ws_state))
+        await _subscriber_loop(ws, ws_state)
+        return
+
+    # ---- download 模式：启动新下载 ----
+    if _run_state["running"]:
+        await ws.send_json({"type": "error", "text": "download already running"})
+        await ws.close(code=1008)
+        return
+
     usernames, raw_urls = _resolve_targets(req)
     targets: list[tuple[str, bool]] = [(u, False) for u in usernames] + [(u, True) for u in raw_urls]
 
@@ -154,83 +287,27 @@ async def download_ws(ws: WebSocket) -> None:
         await ws.send_json({"type": "all_done", "text": "ok"})
         return
 
-    # 新一次下载开始 → 清空历史 events 缓存
     clear_recent()
 
-    # 自动 archive 对齐：删掉磁盘已没的孤儿 entries，让 gallery-dl 能重下回来
-    if cfg.get("archive_auto_sync", True):
-        try:
-            from server.core import archive_sync
-            from pathlib import Path as _P
-            dl_dir = _P(cfg.get("download_dir", "downloads"))
-            if not dl_dir.is_absolute():
-                from .storage import ROOT as _ROOT
-                dl_dir = _ROOT / dl_dir
-            removed = archive_sync.sync_archive_to_disk(ARCHIVE_FILE, dl_dir.resolve())
-            if removed > 0:
-                ev_msg = {"type": "log", "text": f"[archive] auto-sync: removed {removed} orphan entries (will be re-downloaded)"}
-                push_recent(ev_msg)
-                await ws.send_json(ev_msg)
-        except Exception as e:
-            ev_msg = {"type": "warning", "text": f"[archive] auto-sync failed: {e}"}
-            push_recent(ev_msg)
-            await ws.send_json(ev_msg)
-
-    # 刷新 archive 内存缓存，供 _classify_skip 使用
-    _refresh_archive_cache()
-
-    meta_ev = {"type": "meta", "total": len(targets), "targets": [t[0] for t in targets]}
-    push_recent(meta_ev)
-    await ws.send_json(meta_ev)
-
-    parallel = bool(cfg.get("parallel_enabled"))
-    workers = max(1, min(4, int(cfg.get("parallel_workers", 1)))) if parallel else 1
-    breaker_on = bool(cfg.get("parallel_circuit_breaker", True))
-
+    cfg = load_config()
+    runner = GalleryDLRunner(BIN_PATH, ffmpeg_location=cfg.get("ffmpeg_location"))
     abort_event = asyncio.Event()
-    ws_state = {"alive": True}  # 闭包内可变标记，ws 断开后所有 _run_one 共享
 
-    async def safe_send(ev: dict) -> None:
-        """统一 push 历史 + 尽力推 ws；ws 断开不影响历史记录。"""
-        push_recent(ev)
-        if not ws_state["alive"]:
-            return
-        try:
-            await ws.send_json(ev)
-        except (WebSocketDisconnect, RuntimeError):
-            ws_state["alive"] = False
+    _run_state.update({
+        "running": True,
+        "targets": [t[0] for t in targets],
+        "total": len(targets),
+        "current_index": 0,
+        "current_user": None,
+        "subscribers": [(ws, ws_state)],
+        "abort_event": abort_event,
+    })
 
-    if workers <= 1:
-        for idx, (target, is_url) in enumerate(targets, 1):
-            if abort_event.is_set():
-                break
-            await _run_one(
-                ws, runner, cfg, target, is_url, idx, len(targets),
-                abort_event, breaker_on, safe_send,
-            )
-    else:
-        sem = asyncio.Semaphore(workers)
-
-        async def _wrapped(idx: int, target: str, is_url: bool) -> None:
-            async with sem:
-                if abort_event.is_set():
-                    return
-                await _run_one(
-                    ws, runner, cfg, target, is_url, idx, len(targets),
-                    abort_event, breaker_on, safe_send,
-                )
-
-        await asyncio.gather(
-            *[_wrapped(i, t, u) for i, (t, u) in enumerate(targets, 1)],
-            return_exceptions=True,
-        )
-
-    final_ev = {"type": "all_done", "text": "aborted" if abort_event.is_set() else "ok"}
-    await safe_send(final_ev)
+    asyncio.create_task(_run_download(runner, cfg, targets, abort_event))
+    await _subscriber_loop(ws, ws_state)
 
 
 async def _run_one(
-    ws: WebSocket,
     runner: GalleryDLRunner,
     cfg: dict,
     target: str,
@@ -239,9 +316,8 @@ async def _run_one(
     total: int,
     abort_event: asyncio.Event,
     breaker_on: bool,
-    safe_send,
 ) -> None:
-    await safe_send({"type": "user_start", "index": idx, "total": total, "user": target})
+    await _broadcast({"type": "user_start", "index": idx, "total": total, "user": target})
 
     q: Queue = Queue()
     worker = threading.Thread(
@@ -260,16 +336,15 @@ async def _run_one(
                 return
             continue
 
-        # 熔断检测
         if breaker_on and ev.get("type") == "error" and is_circuit_breaker_trigger(ev.get("text", "")):
             abort_event.set()
-            await safe_send(ev)
+            await _broadcast(ev)
             killed = runner.terminate_all()
-            await safe_send({
+            await _broadcast({
                 "type": "circuit_breaker",
                 "text": f"circuit breaker triggered: {ev.get('text', '')[:120]}",
                 "killed": killed,
             })
             return
 
-        await safe_send(ev)
+        await _broadcast(ev)
